@@ -215,7 +215,7 @@ void SquirrelVMBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("collect_garbage"), &SquirrelVMBase::collect_garbage);
 	ClassDB::bind_method(D_METHOD("resurrect_unreachable"), &SquirrelVMBase::resurrect_unreachable);
 
-	ClassDB::bind_method(D_METHOD("set_error_handler", "callable"), &SquirrelVMBase::set_error_handler);
+	ClassDB::bind_method(D_METHOD("set_error_handler", "func"), &SquirrelVMBase::set_error_handler);
 	ClassDB::bind_method(D_METHOD("set_error_handler_default"), &SquirrelVMBase::set_error_handler_default);
 	ClassDB::bind_method(D_METHOD("set_handle_caught_errors", "enable"), &SquirrelVMBase::set_handle_caught_errors);
 	ClassDB::bind_method(D_METHOD("get_last_error"), &SquirrelVMBase::get_last_error);
@@ -823,12 +823,10 @@ TypedArray<SquirrelVariant> SquirrelVMBase::resurrect_unreachable() {
 	return values;
 }
 
-void SquirrelVMBase::set_error_handler(const godot::Ref<SquirrelCallable> &p_callable) {
-	ERR_FAIL_COND(p_callable.is_valid() && Ref<SquirrelFunction>(p_callable).is_null() && Ref<SquirrelNativeFunction>(p_callable).is_null());
-
+void SquirrelVMBase::set_error_handler(const Ref<SquirrelAnyFunction> &p_func) {
 	GET_VM();
 
-	ERR_FAIL_COND(!push_stack(p_callable));
+	ERR_FAIL_COND(!push_stack(p_func));
 	sq_seterrorhandler(vm);
 }
 

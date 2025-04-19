@@ -195,7 +195,7 @@ public:
 	int64_t collect_garbage();
 	godot::TypedArray<SquirrelVariant> resurrect_unreachable();
 
-	void set_error_handler(const godot::Ref<SquirrelCallable> &p_callable);
+	void set_error_handler(const godot::Ref<SquirrelAnyFunction> &p_func);
 	void set_error_handler_default();
 	void set_handle_caught_errors(bool p_enable);
 	godot::Variant get_last_error() const;

@@ -165,7 +165,7 @@
 		</method>
 		<method name="set_error_handler">
 			<return type="void" />
-			<param index="0" name="callable" type="SquirrelCallable" />
+			<param index="0" name="func" type="SquirrelAnyFunction" />
 			<description>
 			</description>
 		</method>
