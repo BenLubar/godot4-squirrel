@@ -4,9 +4,12 @@
 		Virtual machine that runs Squirrel code.
 	</brief_description>
 	<description>
-		Virtual machine that runs Squirrel code.
+		[SquirrelVM] is a virtual machine execution environment for running Squirrel code. Each [SquirrelVM] is a self-contained environment. Changes to a [SquirrelVM] or the [SquirrelVariant] values retrieved from its methods do not affect other [SquirrelVM] instances.
+		[SquirrelVM] can be safely used from one thread at a time. If passing a [SquirrelVM] or its [SquirrelVariant] values are accessible to multiple threads, external synchronization such as [Mutex] must be used in order to make accesses serialized.
+		[b]Note:[/b] See [SquirrelVMBase] for methods shared between [SquirrelVM] and [SquirrelThread].
 	</description>
 	<tutorials>
+		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
 	</tutorials>
 	<methods>
 		<method name="get_array_default_delegate" qualifiers="const">
@@ -76,7 +79,7 @@
 	</members>
 	<signals>
 		<signal name="debug_call">
-			<param index="0" name="vm_or_thread" type="SquirrelVM" />
+			<param index="0" name="vm_or_thread" type="SquirrelVMBase" />
 			<param index="1" name="source_name" type="String" />
 			<param index="2" name="line" type="int" />
 			<param index="3" name="func_name" type="String" />
@@ -85,7 +88,7 @@
 			</description>
 		</signal>
 		<signal name="debug_line">
-			<param index="0" name="vm_or_thread" type="SquirrelVM" />
+			<param index="0" name="vm_or_thread" type="SquirrelVMBase" />
 			<param index="1" name="source_name" type="String" />
 			<param index="2" name="line" type="int" />
 			<param index="3" name="func_name" type="String" />
@@ -95,7 +98,7 @@
 			</description>
 		</signal>
 		<signal name="debug_return">
-			<param index="0" name="vm_or_thread" type="SquirrelVM" />
+			<param index="0" name="vm_or_thread" type="SquirrelVMBase" />
 			<param index="1" name="source_name" type="String" />
 			<param index="2" name="line" type="int" />
 			<param index="3" name="func_name" type="String" />

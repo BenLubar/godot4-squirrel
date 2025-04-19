@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="SquirrelAnyFunction" inherits="SquirrelCallable" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Base class of SquirrelFunction and SquirrelNativeFunction.
 	</brief_description>
 	<description>
+		Base class of [SquirrelFunction] and [SquirrelNativeFunction].
 	</description>
 	<tutorials>
 	</tutorials>

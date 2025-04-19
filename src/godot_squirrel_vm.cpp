@@ -671,7 +671,7 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 	}
 
 	if (varargs) {
-		args = Array::make(args[0], args.slice(1));
+		args = Array::make(vm_base, args[0], args.slice(1));
 	}
 
 	const Variant result = func.callv(args);
@@ -844,9 +844,9 @@ void SquirrelVM::_bind_methods() {
 #endif
 
 #ifndef SQUIRREL_NO_DEBUG
-	ADD_SIGNAL(MethodInfo("debug_call", PropertyInfo(Variant::OBJECT, "vm_or_thread", PROPERTY_HINT_RESOURCE_TYPE, SquirrelVM::get_class_static()), PropertyInfo(Variant::STRING, "source_name"), PropertyInfo(Variant::INT, "line"), PropertyInfo(Variant::STRING, "func_name")));
-	ADD_SIGNAL(MethodInfo("debug_return", PropertyInfo(Variant::OBJECT, "vm_or_thread", PROPERTY_HINT_RESOURCE_TYPE, SquirrelVM::get_class_static()), PropertyInfo(Variant::STRING, "source_name"), PropertyInfo(Variant::INT, "line"), PropertyInfo(Variant::STRING, "func_name")));
-	ADD_SIGNAL(MethodInfo("debug_line", PropertyInfo(Variant::OBJECT, "vm_or_thread", PROPERTY_HINT_RESOURCE_TYPE, SquirrelVM::get_class_static()), PropertyInfo(Variant::STRING, "source_name"), PropertyInfo(Variant::INT, "line"), PropertyInfo(Variant::STRING, "func_name")));
+	ADD_SIGNAL(MethodInfo("debug_call", PropertyInfo(Variant::OBJECT, "vm_or_thread", PROPERTY_HINT_RESOURCE_TYPE, SquirrelVMBase::get_class_static()), PropertyInfo(Variant::STRING, "source_name"), PropertyInfo(Variant::INT, "line"), PropertyInfo(Variant::STRING, "func_name")));
+	ADD_SIGNAL(MethodInfo("debug_return", PropertyInfo(Variant::OBJECT, "vm_or_thread", PROPERTY_HINT_RESOURCE_TYPE, SquirrelVMBase::get_class_static()), PropertyInfo(Variant::STRING, "source_name"), PropertyInfo(Variant::INT, "line"), PropertyInfo(Variant::STRING, "func_name")));
+	ADD_SIGNAL(MethodInfo("debug_line", PropertyInfo(Variant::OBJECT, "vm_or_thread", PROPERTY_HINT_RESOURCE_TYPE, SquirrelVMBase::get_class_static()), PropertyInfo(Variant::STRING, "source_name"), PropertyInfo(Variant::INT, "line"), PropertyInfo(Variant::STRING, "func_name")));
 
 	ClassDB::bind_method(D_METHOD("set_debug_enabled", "debug_enabled"), &SquirrelVM::set_debug_enabled);
 	ClassDB::bind_method(D_METHOD("is_debug_enabled"), &SquirrelVM::is_debug_enabled);

@@ -5,6 +5,8 @@
 	<description>
 	</description>
 	<tutorials>
+		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
+		<link title="Lexical Structure">http://www.squirrel-lang.org/squirreldoc/reference/language/lexical_structure.html</link>
 	</tutorials>
 	<methods>
 		<method name="compile">

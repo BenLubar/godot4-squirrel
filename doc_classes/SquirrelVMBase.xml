@@ -4,12 +4,13 @@
 		Base type for SquirrelVM and SquirrelThread.
 	</brief_description>
 	<description>
-		Base type for [SquirrelVM] and [SquirrelThread].
+		[SquirrelVMBase] is the base type for [SquirrelVM] and [SquirrelThread]. See [SquirrelVM] for more general information.
 	</description>
 	<tutorials>
+		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
 	</tutorials>
 	<methods>
-		<method name="call_function" qualifiers="const vararg">
+		<method name="call_function" qualifiers="vararg">
 			<return type="Variant" />
 			<param index="0" name="func" type="SquirrelCallable" />
 			<param index="1" name="this" type="Variant" />
@@ -27,6 +28,7 @@
 			<return type="SquirrelArray" />
 			<param index="0" name="size" type="int" />
 			<description>
+				Creates a new [SquirrelArray] containing [param size] copies of null.
 			</description>
 		</method>
 		<method name="create_blob">
@@ -38,12 +40,14 @@
 		<method name="create_table">
 			<return type="SquirrelTable" />
 			<description>
+				Creates a new empty [SquirrelTable].
 			</description>
 		</method>
 		<method name="create_table_with_initial_capacity">
 			<return type="SquirrelTable" />
 			<param index="0" name="size" type="int" />
 			<description>
+				Creates a new empty [SquirrelTable] with space for [param size] slots already allocated. Can improve performance when the number of slots in a table is known ahead of time by reducing reallocations.
 			</description>
 		</method>
 		<method name="create_thread">
@@ -54,17 +58,20 @@
 		<method name="get_last_error" qualifiers="const">
 			<return type="Variant" />
 			<description>
+				Returns the current error value, either from a [code]throw[/code] statement, code in the Squirrel standard library or runtime (usually a [String]), or a GDScript function returning [SquirrelThrow].
 			</description>
 		</method>
 		<method name="get_stack" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="index" type="int" />
 			<description>
+				Retrieves a value from the Squirrel execution stack. Positive integers count up from the bottom of the stack, and negative numbers count down from the top of the stack. 0 is not a valid stack index.
 			</description>
 		</method>
 		<method name="get_stack_top" qualifiers="const">
 			<return type="int" />
 			<description>
+				Returns the (positive) index of the top of the stack (accessible via [method get_stack](-1)).
 			</description>
 		</method>
 		<method name="get_state" qualifiers="const">
@@ -82,11 +89,13 @@
 		<method name="import_blob">
 			<return type="void" />
 			<description>
+				Imports the [url=http://www.squirrel-lang.org/squirreldoc/stdlib/stdbloblib.html]blob[/url] library.
 			</description>
 		</method>
 		<method name="import_math">
 			<return type="void" />
 			<description>
+				Imports the [url=http://www.squirrel-lang.org/squirreldoc/stdlib/stdmathlib.html]math[/url] library.
 			</description>
 		</method>
 		<method name="import_script">
@@ -99,6 +108,7 @@
 		<method name="import_string">
 			<return type="void" />
 			<description>
+				Imports the [url=http://www.squirrel-lang.org/squirreldoc/stdlib/stdstringlib.html]string[/url] library.
 			</description>
 		</method>
 		<method name="is_suspended" qualifiers="const">
@@ -110,17 +120,20 @@
 			<return type="void" />
 			<param index="0" name="count" type="int" default="1" />
 			<description>
+				Removes [param count] items from the top of the stack.
 			</description>
 		</method>
 		<method name="push_stack">
 			<return type="bool" />
 			<param index="0" name="value" type="Variant" />
 			<description>
+				Adds [param value] to the top of the stack.
 			</description>
 		</method>
 		<method name="reset_last_error">
 			<return type="void" />
 			<description>
+				Sets the error value to [code]null[/code].
 			</description>
 		</method>
 		<method name="resurrect_unreachable">
@@ -152,12 +165,16 @@
 			<param index="0" name="callable" type="Callable" />
 			<param index="1" name="varargs" type="bool" default="false" />
 			<description>
+				Creates a [SquirrelNativeFunction] that calls [param callable].
+				If [param varargs] is true, the function will be called as [param callable](vm_or_thread: [SquirrelVMBase], this: [Variant], args: [Array]). Otherwise, the function will be called as [param callable](this, arg1, arg2, arg3, ..., argn).
+				[b]Note:[/b] Due to limitations in Godot, calling a function with the wrong parameters in Squirrel will act as if the function immediately returned [code]null[/code].
 			</description>
 		</method>
 		<method name="wrap_variant">
 			<return type="SquirrelUserData" />
 			<param index="0" name="value" type="Variant" />
 			<description>
+				Wraps [param value] as a [SquirrelUserData], which can then be sent through a Squirrel script as an opaque value or have a delegate assigned, then be retrieved using [method SquirrelUserData.get_variant].
 			</description>
 		</method>
 	</methods>
