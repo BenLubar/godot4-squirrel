@@ -11,11 +11,13 @@
 			<return type="SquirrelThrow" />
 			<param index="0" name="exception" type="Variant" />
 			<description>
+				Convenience function for creating a new [SquirrelThrow] and setting [member exception].
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="exception" type="Variant" setter="set_exception" getter="get_exception" default="null">
+			The exception to throw. Usually a [String], but can be any Squirrel-compatible type.
 		</member>
 	</members>
 </class>

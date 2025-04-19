@@ -172,11 +172,14 @@ public:
 	void import_math();
 	void import_string();
 	godot::Variant call_function(const godot::Variant **p_args, GDExtensionInt p_arg_count, GDExtensionCallError &r_error);
+	godot::Variant apply_function(const godot::Ref<SquirrelCallable> &p_func, const godot::Variant &p_this, const godot::Array &p_args);
+	godot::Variant resume_generator(const godot::Ref<SquirrelGenerator> &p_generator);
 
 	godot::Variant get_stack(int64_t p_index) const;
 	int64_t get_stack_top() const;
 	bool push_stack(const godot::Variant &p_value);
 	void pop_stack(int64_t p_count = 1);
+	void remove_stack(int64_t p_index);
 
 	VMState get_state() const;
 	bool is_suspended() const;
@@ -258,9 +261,11 @@ class SquirrelTable : public SquirrelVariant {
 protected:
 	static void _bind_methods();
 
+public:
 	bool set_delegate(const godot::Ref<SquirrelTable> &p_delegate);
 	godot::Ref<SquirrelTable> get_delegate() const;
 
+	bool new_slot(const godot::Variant &p_key, const godot::Variant &p_value);
 	bool set_slot(const godot::Variant &p_key, const godot::Variant &p_value, bool p_raw = false);
 	godot::Variant get_slot(const godot::Variant &p_key, bool p_raw = false) const;
 	void delete_slot(const godot::Variant &p_key, bool p_raw = false);

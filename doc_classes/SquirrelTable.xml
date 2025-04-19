@@ -31,6 +31,13 @@
 			<description>
 			</description>
 		</method>
+		<method name="new_slot">
+			<return type="bool" />
+			<param index="0" name="key" type="Variant" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+			</description>
+		</method>
 		<method name="set_delegate">
 			<return type="bool" />
 			<param index="0" name="delegate" type="SquirrelTable" />

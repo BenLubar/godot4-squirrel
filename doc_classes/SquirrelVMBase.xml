@@ -10,7 +10,15 @@
 		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
 	</tutorials>
 	<methods>
-		<method name="call_function" qualifiers="vararg">
+		<method name="apply_function">
+			<return type="Variant" />
+			<param index="0" name="func" type="SquirrelCallable" />
+			<param index="1" name="this" type="Variant" />
+			<param index="2" name="args" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="call_function" qualifiers="const vararg">
 			<return type="Variant" />
 			<param index="0" name="func" type="SquirrelCallable" />
 			<param index="1" name="this" type="Variant" />
@@ -130,10 +138,22 @@
 				Adds [param value] to the top of the stack.
 			</description>
 		</method>
+		<method name="remove_stack">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
 		<method name="reset_last_error">
 			<return type="void" />
 			<description>
 				Sets the error value to [code]null[/code].
+			</description>
+		</method>
+		<method name="resume_generator">
+			<return type="Variant" />
+			<param index="0" name="generator" type="SquirrelGenerator" />
+			<description>
 			</description>
 		</method>
 		<method name="resurrect_unreachable">

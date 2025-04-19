@@ -5,8 +5,9 @@
 	</brief_description>
 	<description>
 		[SquirrelVM] is a virtual machine execution environment for running Squirrel code. Each [SquirrelVM] is a self-contained environment. Changes to a [SquirrelVM] or the [SquirrelVariant] values retrieved from its methods do not affect other [SquirrelVM] instances.
-		[SquirrelVM] can be safely used from one thread at a time. If a [SquirrelVM] or its [SquirrelVariant] values are accessible to multiple threads, external synchronization such as [Mutex] must be used in order to make accesses serialized.
+		[SquirrelVM] and its owned [SquirrelVariant]s can be safely used from one thread at a time. If a [SquirrelVM] or its [SquirrelVariant] values are accessible to multiple threads, external synchronization such as [Mutex] must be used in order to make accesses serialized.
 		[b]Note:[/b] See [SquirrelVMBase] for methods shared between [SquirrelVM] and [SquirrelThread].
+		[b]Note:[/b] Although [SquirrelVM] extends [SquirrelVariant], it cannot be used as a value inside itself.
 	</description>
 	<tutorials>
 		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
@@ -15,51 +16,61 @@
 		<method name="get_array_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#array]array[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_class_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#class]class[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_closure_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#function]function[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_generator_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#generator]generator[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_instance_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#class-instance]class instance[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_number_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the shared [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#integer]integer[/url] and [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#float]float[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_string_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#string]string[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_table_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#table]table[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_thread_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#thread]thread[/url] delegate table.
 			</description>
 		</method>
 		<method name="get_weak_ref_default_delegate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#weak-reference]weak reference[/url] delegate table.
 			</description>
 		</method>
 	</methods>

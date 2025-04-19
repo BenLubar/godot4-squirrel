@@ -192,11 +192,14 @@ void SquirrelVMBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("import_math"), &SquirrelVMBase::import_math);
 	ClassDB::bind_method(D_METHOD("import_string"), &SquirrelVMBase::import_string);
 	ClassDB::bind_vararg_method(METHOD_FLAG_VARARG, "call_function", &SquirrelVMBase::call_function, MethodInfo("call_function", PropertyInfo(Variant::OBJECT, "func", PROPERTY_HINT_RESOURCE_TYPE, SquirrelCallable::get_class_static()), PropertyInfo(Variant::NIL, "this", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_NIL_IS_VARIANT)));
+	ClassDB::bind_method(D_METHOD("apply_function", "func", "this", "args"), &SquirrelVMBase::apply_function);
+	ClassDB::bind_method(D_METHOD("resume_generator", "generator"), &SquirrelVMBase::resume_generator);
 
 	ClassDB::bind_method(D_METHOD("get_stack", "index"), &SquirrelVMBase::get_stack);
 	ClassDB::bind_method(D_METHOD("get_stack_top"), &SquirrelVMBase::get_stack_top);
 	ClassDB::bind_method(D_METHOD("push_stack", "value"), &SquirrelVMBase::push_stack);
 	ClassDB::bind_method(D_METHOD("pop_stack", "count"), &SquirrelVMBase::pop_stack, DEFVAL(1));
+	ClassDB::bind_method(D_METHOD("remove_stack", "index"), &SquirrelVMBase::remove_stack);
 
 	ClassDB::bind_method(D_METHOD("get_state"), &SquirrelVMBase::get_state);
 	ClassDB::bind_method(D_METHOD("is_suspended"), &SquirrelVMBase::is_suspended);
@@ -406,7 +409,7 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 
 	const Ref<SquirrelCallable> func = *p_args[0];
 	ERR_FAIL_COND_V(func.is_null(), Variant());
-	ERR_FAIL_COND_V(!func->is_owned_by(this), false);
+	ERR_FAIL_COND_V(!func->is_owned_by(this), Variant());
 
 	GET_VM(Variant());
 
@@ -426,12 +429,60 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 		ERR_FAIL_V(Variant());
 	}
 
-	Variant result = get_stack(-1);
+	const Variant result = get_stack(-1);
 	sq_poptop(vm);
 
 	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
 		sq_poptop(vm);
 	}
+
+	return result;
+}
+
+Variant SquirrelVMBase::apply_function(const Ref<SquirrelCallable> &p_func, const Variant &p_this, const Array &p_args) {
+	ERR_FAIL_COND_V(p_func.is_null(), Variant());
+	ERR_FAIL_COND_V(!p_func->is_owned_by(this), Variant());
+
+	GET_VM(Variant());
+
+	sq_pushobject(vm, p_func->_internal->obj);
+	if (unlikely(!push_stack(p_this))) {
+		sq_poptop(vm);
+		ERR_FAIL_V(Variant());
+	}
+	for (int64_t i = 0; i < p_args.size(); i++) {
+		if (unlikely(!push_stack(p_args[i]))) {
+			sq_pop(vm, i + 2);
+			ERR_FAIL_V(Variant());
+		}
+	}
+
+	if (unlikely(SQ_FAILED(sq_call(vm, p_args.size(), SQTrue, SQTrue)))) {
+		sq_poptop(vm);
+		ERR_FAIL_V(Variant());
+	}
+
+	const Variant result = get_stack(-1);
+	sq_poptop(vm);
+
+	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
+		sq_poptop(vm);
+	}
+
+	return result;
+}
+
+Variant SquirrelVMBase::resume_generator(const Ref<SquirrelGenerator> &p_generator) {
+	ERR_FAIL_COND_V(p_generator.is_null(), Variant());
+	ERR_FAIL_COND_V(!p_generator->is_owned_by(this), Variant());
+
+	GET_VM(Variant());
+
+	sq_pushobject(vm, p_generator->_internal->obj);
+	sq_resume(vm, SQTrue, SQTrue);
+
+	const Variant result = get_stack(-1);
+	sq_pop(vm, 2);
 
 	return result;
 }
@@ -554,6 +605,12 @@ void SquirrelVMBase::pop_stack(int64_t p_count) {
 	ERR_FAIL_COND(p_count > sq_gettop(vm));
 
 	sq_pop(vm, p_count);
+}
+
+void SquirrelVMBase::remove_stack(int64_t p_index) {
+	GET_VM();
+
+	sq_remove(vm, p_index);
 }
 
 SquirrelVMBase::VMState SquirrelVMBase::get_state() const {
@@ -1057,6 +1114,7 @@ void SquirrelTable::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_delegate"), &SquirrelTable::get_delegate);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_NONE), "set_delegate", "get_delegate");
 
+	ClassDB::bind_method(D_METHOD("new_slot", "key", "value"), &SquirrelTable::new_slot);
 	ClassDB::bind_method(D_METHOD("set_slot", "key", "value", "raw"), &SquirrelTable::set_slot, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("get_slot", "key", "raw"), &SquirrelTable::get_slot, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("delete_slot", "key", "raw"), &SquirrelTable::delete_slot, DEFVAL(false));
@@ -1091,6 +1149,28 @@ Ref<SquirrelTable> SquirrelTable::get_delegate() const {
 	sq_pop(_vm->_vm_internal->vm, 2);
 
 	return delegate;
+}
+
+bool SquirrelTable::new_slot(const Variant &p_key, const Variant &p_value) {
+	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!_vm->push_stack(p_key))) {
+		sq_poptop(_vm->_vm_internal->vm);
+
+		return false;
+	}
+
+	if (unlikely(!_vm->push_stack(p_value))) {
+		sq_pop(_vm->_vm_internal->vm, 2);
+
+		return false;
+	}
+
+	const bool ok = SQ_SUCCEEDED(sq_newslot(_vm->_vm_internal->vm, -3, SQFalse));
+	sq_pop(_vm->_vm_internal->vm, ok ? 1 : 3);
+
+	return ok;
 }
 
 bool SquirrelTable::set_slot(const Variant &p_key, const Variant &p_value, bool p_raw) {
@@ -1612,4 +1692,3 @@ Ref<SquirrelTailCall> SquirrelTailCall::make(const Ref<SquirrelFunction> &p_func
 // SQUIRREL_API SQRESULT sq_bindenv(HSQUIRRELVM v,SQInteger idx);
 // SQUIRREL_API SQRESULT sq_setclosureroot(HSQUIRRELVM v,SQInteger idx);
 // SQUIRREL_API SQRESULT sq_getclosureroot(HSQUIRRELVM v,SQInteger idx);
-// SQUIRREL_API SQRESULT sq_resume(HSQUIRRELVM v,SQBool retval,SQBool raiseerror);

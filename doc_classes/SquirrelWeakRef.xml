@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="SquirrelWeakRef" inherits="SquirrelVariant" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Represents a Squirrel "weakref" object.
 	</brief_description>
 	<description>
+		Represents a Squirrel "weakref" object. Points to another Squirrel object ([String] or [SquirrelVariant]), and is automatically changed to wrapping [code]null[/code] if the object is deleted due to being unreferenced.
+		[b]Note:[/b] When stored in a container ([SquirrelTable], [SquirrelArray], [SquirrelClass], or [SquirrelInstance]), retrieving it will return the result from [method get_object] automatically.
+		[b]Note:[/b] [SquirrelWeakRef] can point to [String], but only if it is created in Squirrel, as [String] does not extend [SquirrelVariant].
 	</description>
 	<tutorials>
+		<link title="Weak References">http://www.squirrel-lang.org/squirreldoc/reference/language/weak_references.html</link>
 	</tutorials>
 	<methods>
 		<method name="get_object" qualifiers="const">
 			<return type="Variant" />
 			<description>
+				Returns the object that this [SquirrelWeakRef] points to, or [code]null[/code] if the object was deleted in the [SquirrelVM].
 			</description>
 		</method>
 	</methods>

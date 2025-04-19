@@ -12,13 +12,17 @@
 			<param index="0" name="func" type="SquirrelFunction" />
 			<param index="1" name="args" type="Array" />
 			<description>
+				Convenience function for creating a new [SquirrelTailCall] and setting [member func] and [member args].
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="args" type="Array" setter="set_args" getter="get_args" default="[]">
+			The arguments to call [member func] with. The argument at index 0 is the [code]this[/code] value.
 		</member>
 		<member name="func" type="SquirrelFunction" setter="set_func" getter="get_func">
+			The [SquirrelFunction] to place on the stack as this native function returns.
+			[b]Note:[/b] Only Squirrel functions can be called this way; this does not work for [SquirrelNativeFunction].
 		</member>
 	</members>
 </class>
