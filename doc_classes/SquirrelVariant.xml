@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelVariant" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_squirrel_reference_count" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="is_owned_by" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vm_or_thread" type="SquirrelVMBase" />
+			<description>
+			</description>
+		</method>
+		<method name="iterate" qualifiers="const">
+			<return type="SquirrelIterator" />
+			<description>
+			</description>
+		</method>
+		<method name="weak_ref" qualifiers="const">
+			<return type="SquirrelWeakRef" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>

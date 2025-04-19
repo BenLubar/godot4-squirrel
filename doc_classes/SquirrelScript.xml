@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelScript" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="compile">
+			<return type="int" enum="Error" />
+			<param index="0" name="debug_file_name" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="bytecode" type="PackedByteArray" setter="set_bytecode" getter="get_bytecode" default="PackedByteArray()">
+		</member>
+		<member name="error_column" type="int" setter="set_error_column" getter="get_error_column">
+			Contains the column number of where the error occurred after [method compile] fails.
+			[b]Note:[/b] This property is not saved when serializing a [SquirrelScript] resource.
+		</member>
+		<member name="error_desc" type="String" setter="set_error_desc" getter="get_error_desc">
+			Contains the error message after [method compile] fails.
+			[b]Note:[/b] This property is not saved when serializing a [SquirrelScript] resource.
+		</member>
+		<member name="error_line" type="int" setter="set_error_line" getter="get_error_line">
+			Contains the line number of where the error occurred after [method compile] fails.
+			[b]Note:[/b] This property is not saved when serializing a [SquirrelScript] resource.
+		</member>
+		<member name="error_source" type="String" setter="set_error_source" getter="get_error_source">
+			Contains the filename where the error occurred after [method compile] fails.
+			[b]Note:[/b] This property is not saved when serializing a [SquirrelScript] resource.
+		</member>
+		<member name="source" type="String" setter="set_source" getter="get_source" default="&quot;&quot;">
+		</member>
+	</members>
+</class>

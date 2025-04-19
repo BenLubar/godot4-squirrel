@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelVMBase" inherits="SquirrelVariant" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Base type for SquirrelVM and SquirrelThread.
+	</brief_description>
+	<description>
+		Base type for [SquirrelVM] and [SquirrelThread].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="call_function" qualifiers="const vararg">
+			<return type="Variant" />
+			<param index="0" name="func" type="SquirrelCallable" />
+			<param index="1" name="this" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="collect_garbage">
+			<return type="int" />
+			<description>
+				Finds and deletes objects that are unreachable. Returns the number of reference cycles found and deleted.
+				[b]Note:[/b] Unreferenced (as opposed to just unreachable) objects are deleted automatically without calling the garbage collector.
+			</description>
+		</method>
+		<method name="create_array">
+			<return type="SquirrelArray" />
+			<param index="0" name="size" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="create_blob">
+			<return type="SquirrelInstance" />
+			<param index="0" name="data" type="PackedByteArray" />
+			<description>
+			</description>
+		</method>
+		<method name="create_table">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="create_table_with_initial_capacity">
+			<return type="SquirrelTable" />
+			<param index="0" name="size" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="create_thread">
+			<return type="SquirrelThread" />
+			<description>
+			</description>
+		</method>
+		<method name="get_last_error" qualifiers="const">
+			<return type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="get_stack" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_stack_top" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_state" qualifiers="const">
+			<return type="int" enum="SquirrelVMBase.VMState" />
+			<description>
+			</description>
+		</method>
+		<method name="import">
+			<return type="SquirrelFunction" />
+			<param index="0" name="script" type="SquirrelScript" />
+			<param index="1" name="debug_file_name" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="import_blob">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="import_math">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="import_script">
+			<return type="SquirrelFunction" />
+			<param index="0" name="script" type="String" />
+			<param index="1" name="debug_file_name" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="import_string">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="is_suspended" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="pop_stack">
+			<return type="void" />
+			<param index="0" name="count" type="int" default="1" />
+			<description>
+			</description>
+		</method>
+		<method name="push_stack">
+			<return type="bool" />
+			<param index="0" name="value" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="reset_last_error">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="resurrect_unreachable">
+			<return type="SquirrelVariant[]" />
+			<description>
+				Runs the garbage collector (see [method collect_garbage]), but instead of deleting unreachable objects, returns them in an array.
+				[b]Note:[/b] Unreferenced (as opposed to just unreachable) objects are deleted automatically without calling the garbage collector.
+			</description>
+		</method>
+		<method name="set_error_handler">
+			<return type="void" />
+			<param index="0" name="callable" type="SquirrelCallable" />
+			<description>
+			</description>
+		</method>
+		<method name="set_error_handler_default">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="set_handle_caught_errors">
+			<return type="void" />
+			<param index="0" name="enable" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="wrap_callable">
+			<return type="SquirrelNativeFunction" />
+			<param index="0" name="callable" type="Callable" />
+			<param index="1" name="varargs" type="bool" default="false" />
+			<description>
+			</description>
+		</method>
+		<method name="wrap_variant">
+			<return type="SquirrelUserData" />
+			<param index="0" name="value" type="Variant" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="const_table" type="SquirrelTable" setter="set_const_table" getter="get_const_table">
+		</member>
+		<member name="registry_table" type="SquirrelTable" setter="" getter="get_registry_table">
+		</member>
+		<member name="root_table" type="SquirrelTable" setter="set_root_table" getter="get_root_table">
+		</member>
+	</members>
+	<constants>
+		<constant name="IDLE" value="0" enum="VMState">
+		</constant>
+		<constant name="RUNNING" value="1" enum="VMState">
+		</constant>
+		<constant name="SUSPENDED" value="2" enum="VMState">
+		</constant>
+	</constants>
+</class>

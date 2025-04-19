@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelVM" inherits="SquirrelVMBase" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Virtual machine that runs Squirrel code.
+	</brief_description>
+	<description>
+		Virtual machine that runs Squirrel code.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_array_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_class_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_closure_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_generator_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_instance_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_number_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_string_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_table_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_thread_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_weak_ref_default_delegate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="debug_enabled" type="bool" setter="set_debug_enabled" getter="is_debug_enabled" default="false">
+			Controls whether [signal debug_call], [signal debug_return], and [signal debug_line] will be emitted.
+			[b]Note:[/b] This property only affects [SquirrelThread]s created after it is changed.
+		</member>
+		<member name="error_func" type="Callable" setter="set_error_func" getter="get_error_func" default="Callable()">
+			Function to be called with a [String] containing an error message.
+			If this property is null, a function similar to [method @GlobalScope.push_error] will be used.
+		</member>
+		<member name="print_func" type="Callable" setter="set_print_func" getter="get_print_func" default="Callable()">
+			Function to be called with a [String] containing text to print.
+			If this property is null, a function similar to [method @GlobalScope.print] will be used.
+		</member>
+	</members>
+	<signals>
+		<signal name="debug_call">
+			<param index="0" name="vm_or_thread" type="SquirrelVM" />
+			<param index="1" name="source_name" type="String" />
+			<param index="2" name="line" type="int" />
+			<param index="3" name="func_name" type="String" />
+			<description>
+				Emitted (if [member debug_enabled]) whenever a function is called from a script.
+			</description>
+		</signal>
+		<signal name="debug_line">
+			<param index="0" name="vm_or_thread" type="SquirrelVM" />
+			<param index="1" name="source_name" type="String" />
+			<param index="2" name="line" type="int" />
+			<param index="3" name="func_name" type="String" />
+			<description>
+				Emitted (if [member debug_enabled]) for every line or statement in a script.
+				[b]Note:[/b] If [member SquirrelScript.bytecode] was compiled with debugging disabled, this signal will not be emitted.
+			</description>
+		</signal>
+		<signal name="debug_return">
+			<param index="0" name="vm_or_thread" type="SquirrelVM" />
+			<param index="1" name="source_name" type="String" />
+			<param index="2" name="line" type="int" />
+			<param index="3" name="func_name" type="String" />
+			<description>
+				Emitted (if [member debug_enabled]) whenever a function ends in a script.
+			</description>
+		</signal>
+	</signals>
+</class>

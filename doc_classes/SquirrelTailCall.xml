@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelTailCall" inherits="SquirrelSpecialReturn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="make" qualifiers="static">
+			<return type="SquirrelTailCall" />
+			<param index="0" name="func" type="SquirrelFunction" />
+			<param index="1" name="args" type="Array" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="args" type="Array" setter="set_args" getter="get_args" default="[]">
+		</member>
+		<member name="func" type="SquirrelFunction" setter="set_func" getter="get_func">
+		</member>
+	</members>
+</class>

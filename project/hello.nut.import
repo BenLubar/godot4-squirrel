@@ -1,0 +1,16 @@
+[remap]
+
+importer="SquirrelEditorImportPlugin"
+importer_version=320
+type="SquirrelScript"
+uid="uid://dfyp4s64ipqnv"
+path="res://.godot/imported/hello.nut-0d3085fd4ee72a3c2c656deff30b63f0.res"
+
+[deps]
+
+source_file="res://hello.nut"
+dest_files=["res://.godot/imported/hello.nut-0d3085fd4ee72a3c2c656deff30b63f0.res"]
+
+[params]
+
+compile=true

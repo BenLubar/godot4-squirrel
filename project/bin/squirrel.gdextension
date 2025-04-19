@@ -1,0 +1,59 @@
+[configuration]
+
+entry_symbol = "squirrel_library_init"
+compatibility_minimum = "4.4"
+reloadable = true
+
+[libraries]
+macos.single.debug = "./libgdsquirrel.macos.template_debug.dylib"
+macos.double.debug = "./libgdsquirrel.macos.template_debug.double.dylib"
+macos.single.release = "./libgdsquirrel.macos.template_release.dylib"
+macos.double.release = "./libgdsquirrel.macos.template_debug.double.dylib"
+
+ios.arm64.single.debug = "./libgdsquirrel.ios.template_debug.arm64.dylib"
+ios.arm64.double.debug = "./libgdsquirrel.ios.template_debug.arm64.double.dylib"
+ios.arm64.single.release = "./libgdsquirrel.ios.template_release.arm64.dylib"
+ios.arm64.double.release = "./libgdsquirrel.ios.template_release.arm64.double.dylib"
+
+windows.x86_32.single.debug = "./gdsquirrel.windows.template_debug.x86_32.dll"
+windows.x86_32.double.debug = "./gdsquirrel.windows.template_debug.x86_32.double.dll"
+windows.x86_32.single.release = "./gdsquirrel.windows.template_release.x86_32.dll"
+windows.x86_32.double.release = "./gdsquirrel.windows.template_release.x86_32.double.dll"
+
+windows.x86_64.single.debug = "./gdsquirrel.windows.template_debug.x86_64.dll"
+windows.x86_64.double.debug = "./gdsquirrel.windows.template_debug.x86_64.double.dll"
+windows.x86_64.single.release = "./gdsquirrel.windows.template_release.x86_64.dll"
+windows.x86_64.double.release = "./gdsquirrel.windows.template_release.x86_64.double.dll"
+
+linux.x86_64.single.debug = "./libgdsquirrel.linux.template_debug.x86_64.so"
+linux.x86_64.double.debug = "./libgdsquirrel.linux.template_debug.x86_64.double.so"
+linux.x86_64.single.release = "./libgdsquirrel.linux.template_release.x86_64.so"
+linux.x86_64.double.release = "./libgdsquirrel.linux.template_release.x86_64.double.so"
+
+linux.arm64.single.debug = "./libgdsquirrel.linux.template_debug.arm64.so"
+linux.arm64.double.debug = "./libgdsquirrel.linux.template_debug.arm64.double.so"
+linux.arm64.single.release = "./libgdsquirrel.linux.template_release.arm64.so"
+linux.arm64.double.release = "./libgdsquirrel.linux.template_release.arm64.double.so"
+
+linux.rv64.single.debug = "./libgdsquirrel.linux.template_debug.rv64.so"
+linux.rv64.double.debug = "./libgdsquirrel.linux.template_debug.rv64.double.so"
+linux.rv64.single.release = "./libgdsquirrel.linux.template_release.rv64.so"
+linux.rv64.double.release = "./libgdsquirrel.linux.template_release.rv64.double.so"
+
+android.x86_64.single.debug = "./libgdsquirrel.android.template_debug.x86_64.so"
+android.x86_64.double.debug = "./libgdsquirrel.android.template_debug.x86_64.double.so"
+android.x86_64.single.release = "./libgdsquirrel.android.template_release.x86_64.so"
+android.x86_64.double.release = "./libgdsquirrel.android.template_release.x86_64.double.so"
+
+android.arm64.single.debug = "./libgdsquirrel.android.template_debug.arm64.so"
+android.arm64.double.debug = "./libgdsquirrel.android.template_debug.arm64.double.so"
+android.arm64.single.release = "./libgdsquirrel.android.template_release.arm64.so"
+android.arm64.double.release = "./libgdsquirrel.android.template_release.arm64.double.so"
+
+web.wasm32.single.debug = "./libgdsquirrel.web.template_debug.wasm32.nothreads.wasm"
+web.wasm32.double.debug = "./libgdsquirrel.web.template_release.wasm32.double.nothreads.wasm"
+web.wasm32.single.release = "./libgdsquirrel.web.template_release.wasm32.nothreads.wasm"
+web.wasm32.double.release = "./libgdsquirrel.web.template_release.wasm32.double.nothreads.wasm"
+
+[icons]
+SquirrelScript = "simple_nut.webp"

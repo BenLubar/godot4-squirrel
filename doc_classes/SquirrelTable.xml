@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelTable" inherits="SquirrelVariant" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="clear">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="delete_slot">
+			<return type="void" />
+			<param index="0" name="key" type="Variant" />
+			<param index="1" name="raw" type="bool" default="false" />
+			<description>
+			</description>
+		</method>
+		<method name="duplicate" qualifiers="const">
+			<return type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="get_slot" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="key" type="Variant" />
+			<param index="1" name="raw" type="bool" default="false" />
+			<description>
+			</description>
+		</method>
+		<method name="set_delegate">
+			<return type="bool" />
+			<param index="0" name="delegate" type="SquirrelTable" />
+			<description>
+			</description>
+		</method>
+		<method name="set_slot">
+			<return type="bool" />
+			<param index="0" name="key" type="Variant" />
+			<param index="1" name="value" type="Variant" />
+			<param index="2" name="raw" type="bool" default="false" />
+			<description>
+			</description>
+		</method>
+		<method name="size" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="delegate" type="SquirrelTable" setter="set_delegate" getter="get_delegate">
+		</member>
+	</members>
+</class>
