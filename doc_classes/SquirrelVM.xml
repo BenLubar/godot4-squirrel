@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		[SquirrelVM] is a virtual machine execution environment for running Squirrel code. Each [SquirrelVM] is a self-contained environment. Changes to a [SquirrelVM] or the [SquirrelVariant] values retrieved from its methods do not affect other [SquirrelVM] instances.
-		[SquirrelVM] can be safely used from one thread at a time. If passing a [SquirrelVM] or its [SquirrelVariant] values are accessible to multiple threads, external synchronization such as [Mutex] must be used in order to make accesses serialized.
+		[SquirrelVM] can be safely used from one thread at a time. If a [SquirrelVM] or its [SquirrelVariant] values are accessible to multiple threads, external synchronization such as [Mutex] must be used in order to make accesses serialized.
 		[b]Note:[/b] See [SquirrelVMBase] for methods shared between [SquirrelVM] and [SquirrelThread].
 	</description>
 	<tutorials>
