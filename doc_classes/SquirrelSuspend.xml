@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelSuspend" inherits="SquirrelSpecialReturn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="make" qualifiers="static">
+			<return type="SquirrelSuspend" />
+			<param index="0" name="result" type="Variant" />
+			<description>
+				Convenience function for creating a new [SquirrelSuspend] and setting [member result].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="result" type="Variant" setter="set_result" getter="get_result" default="null">
+		</member>
+	</members>
+</class>

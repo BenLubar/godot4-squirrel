@@ -6,4 +6,19 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="get_state" qualifiers="const">
+			<return type="int" enum="SquirrelGenerator.GeneratorState" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="DEAD" value="0" enum="GeneratorState">
+		</constant>
+		<constant name="RUNNING" value="1" enum="GeneratorState">
+		</constant>
+		<constant name="SUSPENDED" value="2" enum="GeneratorState">
+		</constant>
+	</constants>
 </class>

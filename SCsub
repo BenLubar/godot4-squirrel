@@ -35,6 +35,7 @@ sources = [
 	"squirrel/sqstdlib/sqstdaux.cpp",
 	"squirrel/sqstdlib/sqstdrex.cpp",
 
+	"src/godot_squirrel_internals.cpp",
 	"src/godot_squirrel_memory.cpp",
 	"src/godot_squirrel_register_types.cpp",
 	"src/godot_squirrel_script.cpp",

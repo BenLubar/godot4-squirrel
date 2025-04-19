@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="SquirrelScript" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
+		Squirrel .NUT script
 	</brief_description>
 	<description>
+		A (possibly compiled) Squirrel .NUT script.
 	</description>
 	<tutorials>
 		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
@@ -13,11 +15,15 @@
 			<return type="int" enum="Error" />
 			<param index="0" name="debug_file_name" type="String" default="&quot;&quot;" />
 			<description>
+				Compiles [member source] and serializes the resulting closure to [member bytecode] if compilation succeeds.
+				Also assigns values to [member error_desc], [member error_source], [member error_line], and [member error_column].
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="bytecode" type="PackedByteArray" setter="set_bytecode" getter="get_bytecode" default="PackedByteArray()">
+			The compiled bytecode of the script. Set this to match [member source] by calling [method compile].
+			[b]Note:[/b] Makes no attempt to verify the assigned [member bytecode]. Unless the data came from a trusted source, assume this might not correspond to [member source]. Likewise, [member source] can intentionally be set to a different value (such as an empty [String]) if only the bytecode is desired.
 		</member>
 		<member name="error_column" type="int" setter="set_error_column" getter="get_error_column">
 			Contains the column number of where the error occurred after [method compile] fails.
@@ -36,6 +42,8 @@
 			[b]Note:[/b] This property is not saved when serializing a [SquirrelScript] resource.
 		</member>
 		<member name="source" type="String" setter="set_source" getter="get_source" default="&quot;&quot;">
+			The source code of the script.
+			[b]Note:[/b] Attempting to assign a string containing ASCII NUL characters [code]"\x00"[/code] to this property will fail without modifying the property's value.
 		</member>
 	</members>
 </class>

@@ -63,6 +63,7 @@ void initialize_squirrel_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_ABSTRACT_CLASS(SquirrelSpecialReturn);
 	GDREGISTER_CLASS(SquirrelThrow);
 	GDREGISTER_CLASS(SquirrelTailCall);
+	GDREGISTER_CLASS(SquirrelSuspend);
 }
 
 void uninitialize_squirrel_module(ModuleInitializationLevel p_level) {

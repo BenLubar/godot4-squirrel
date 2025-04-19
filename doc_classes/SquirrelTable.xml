@@ -10,6 +10,7 @@
 		<method name="clear">
 			<return type="void" />
 			<description>
+				Removes all slots from this [SquirrelTable].
 			</description>
 		</method>
 		<method name="delete_slot">
@@ -17,11 +18,14 @@
 			<param index="0" name="key" type="Variant" />
 			<param index="1" name="raw" type="bool" default="false" />
 			<description>
+				Deletes the slot with the given [param key].
+				Returns [code]false[/code] if it fails.
 			</description>
 		</method>
 		<method name="duplicate" qualifiers="const">
 			<return type="SquirrelTable" />
 			<description>
+				Clones the [SquirrelTable].
 			</description>
 		</method>
 		<method name="get_slot" qualifiers="const">
@@ -29,6 +33,8 @@
 			<param index="0" name="key" type="Variant" />
 			<param index="1" name="raw" type="bool" default="false" />
 			<description>
+				Gets the value stored in the slot with the given [param key].
+				Returns [code]null[/code] if it fails.
 			</description>
 		</method>
 		<method name="new_slot">
@@ -36,12 +42,17 @@
 			<param index="0" name="key" type="Variant" />
 			<param index="1" name="value" type="Variant" />
 			<description>
+				Creates a slot with the given [param key] if it does not already exist, then assigns [param value] to the slot.
+				This is the closest equivalent to [code]dictionary[key] = value[/code] in GDScript.
+				Returns [code]false[/code] if it fails.
 			</description>
 		</method>
 		<method name="set_delegate">
 			<return type="bool" />
 			<param index="0" name="delegate" type="SquirrelTable" />
 			<description>
+				Assigns a new [url=http://www.squirrel-lang.org/squirreldoc/reference/language/delegation.html]delegate[/url] to this [SquirrelTable].
+				Returns [code]false[/code] if it fails.
 			</description>
 		</method>
 		<method name="set_slot">
@@ -50,11 +61,22 @@
 			<param index="1" name="value" type="Variant" />
 			<param index="2" name="raw" type="bool" default="false" />
 			<description>
+				Assigns a [param value] to the slot with the given [param key].
+				Returns [code]false[/code] if it fails.
 			</description>
 		</method>
 		<method name="size" qualifiers="const">
 			<return type="int" />
 			<description>
+				Returns the number of slots in the [SquirrelTable].
+			</description>
+		</method>
+		<method name="wrap_callables">
+			<return type="bool" />
+			<param index="0" name="callables" type="Dictionary[String, Callable]" />
+			<param index="1" name="varargs" type="bool" />
+			<description>
+				Convenience function that calls [method SquirrelVMBase.wrap_callable] on each of the [param callables] and assigns them to the table using [method new_slot].
 			</description>
 		</method>
 	</methods>

@@ -4,7 +4,8 @@
 		Base type for SquirrelVM and SquirrelThread.
 	</brief_description>
 	<description>
-		[SquirrelVMBase] is the base type for [SquirrelVM] and [SquirrelThread]. See [SquirrelVM] for more general information.
+		[SquirrelVMBase] is the base type for [SquirrelVM] and [SquirrelThread].
+		See [SquirrelVM] for more general information.
 	</description>
 	<tutorials>
 		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
@@ -32,17 +33,28 @@
 				[b]Note:[/b] Unreferenced (as opposed to just unreachable) objects are deleted automatically without calling the garbage collector.
 			</description>
 		</method>
+		<method name="convert_variant">
+			<return type="Variant" />
+			<param index="0" name="value" type="Variant" />
+			<param index="1" name="wrap_unhandled_values" type="bool" default="false" />
+			<description>
+				Converts [Array], [Dictionary], [PackedByteArray], [PackedInt32Array], [PackedInt64Array], [PackedFloat32Array], and [PackedFloat64Array] to [SquirrelArray] and [SquirrelTable].
+				If [param wrap_unhandled_values] is true, also wraps any [Variant] that would be rejected by [method push_stack] using [method wrap_variant]. Otherwise, if any such values are present, returns [code]null[/code].
+				[b]Note:[/b] This doesn't call [method wrap_callable] in either case. If you intend to pass a [Callable] to Squirrel as a function, you need to call [method wrap_callable] directly.
+			</description>
+		</method>
 		<method name="create_array">
 			<return type="SquirrelArray" />
 			<param index="0" name="size" type="int" />
 			<description>
-				Creates a new [SquirrelArray] containing [param size] copies of null.
+				Creates a new [SquirrelArray] containing [param size] items, all set to [code]null[/code].
 			</description>
 		</method>
 		<method name="create_blob">
 			<return type="SquirrelInstance" />
 			<param index="0" name="data" type="PackedByteArray" />
 			<description>
+				Creates a [url=http://www.squirrel-lang.org/squirreldoc/stdlib/stdbloblib.html#the-blob-class]blob[/url] instance with the specified [param data].
 			</description>
 		</method>
 		<method name="create_table">
@@ -61,6 +73,8 @@
 		<method name="create_thread">
 			<return type="SquirrelThread" />
 			<description>
+				Creates a [SquirrelThread] which can be used both as a Squirrel value and as a VM that shares memory.
+				[b]Note:[/b] This differs from the [code]newthread[/code] function in that it does not assign a function to the thread. If you are going to send the thread to Squirrel as a value, push a function onto the stack. Likewise, if you are using an idle thread allocated by a Squirrel script, pop the function from the stack and pass it to [method call_function], then put it back on the stack once the thread returns to an idle state.
 			</description>
 		</method>
 		<method name="get_last_error" qualifiers="const">
@@ -79,12 +93,15 @@
 		<method name="get_stack_top" qualifiers="const">
 			<return type="int" />
 			<description>
-				Returns the (positive) index of the top of the stack (accessible via [method get_stack](-1)).
+				Returns the (positive) index of the top of the stack (accessible via [code]get_stack(-1)[/code]).
 			</description>
 		</method>
 		<method name="get_state" qualifiers="const">
 			<return type="int" enum="SquirrelVMBase.VMState" />
 			<description>
+				Returns [constant SUSPENDED] if the thread is waiting for a call to [method wake_up].
+				Returns [constant RUNNING] if there is at least one function on the call stack and the thread is not suspended.
+				Returns [constant IDLE] otherwise.
 			</description>
 		</method>
 		<method name="import">
@@ -92,6 +109,10 @@
 			<param index="0" name="script" type="SquirrelScript" />
 			<param index="1" name="debug_file_name" type="String" default="&quot;&quot;" />
 			<description>
+				Imports a [SquirrelScript] as a [SquirrelFunction]. If [member SquirrelScript.bytecode] is not empty, the script will be parsed from bytecode. Otherwise, the script will be compiled in the VM.
+				Optionally, [param debug_file_name] will replace [param script]'s [member Resource.name] in error messages if it is not empty.
+				Returns [code]null[/code] if parsing the bytecode or compiling the script fails.
+				[b]Note:[/b] If you intend to use a [SquirrelScript] multiple times or you need access to the error information when the compilation fails, call [method SquirrelScript.compile] to compile the script and serialize it to bytecode. Scripts imported as project files are compiled by default.
 			</description>
 		</method>
 		<method name="import_blob">
@@ -111,6 +132,8 @@
 			<param index="0" name="script" type="String" />
 			<param index="1" name="debug_file_name" type="String" default="&quot;&quot;" />
 			<description>
+				Convenience function for constructing a [SquirrelScript] and setting [member SquirrelScript.source], then passing it to [method import].
+				[b]Note:[/b] If the script is reused, it is preferrable to construct a [SquirrelScript] and call [method SquirrelScript.compile] rather than compiling it each time.
 			</description>
 		</method>
 		<method name="import_string">
@@ -122,6 +145,8 @@
 		<method name="is_suspended" qualifiers="const">
 			<return type="bool" />
 			<description>
+				Convenience function for checking if [method get_state] is [constant SUSPENDED].
+				If your code is not expecting the script to call [code]suspend[/code], one option is to throw the VM away and raise an error if this function returns true after a call to [method call_function].
 			</description>
 		</method>
 		<method name="pop_stack">
@@ -142,6 +167,7 @@
 			<return type="void" />
 			<param index="0" name="index" type="int" />
 			<description>
+				Removes an arbitrary value from the stack by [param index].
 			</description>
 		</method>
 		<method name="reset_last_error">
@@ -154,6 +180,8 @@
 			<return type="Variant" />
 			<param index="0" name="generator" type="SquirrelGenerator" />
 			<description>
+				Runs a [SquirrelGenerator] until the next [code]yield[/code] statement or until it returns.
+				Returns the value given to [code]yield[/code].
 			</description>
 		</method>
 		<method name="resurrect_unreachable">
@@ -167,16 +195,30 @@
 			<return type="void" />
 			<param index="0" name="func" type="SquirrelAnyFunction" />
 			<description>
+				Defines a function that will be called
 			</description>
 		</method>
 		<method name="set_error_handler_default">
 			<return type="void" />
 			<description>
+				Resets the error handler to the standard error handler, which prints information about the error and the state of the stack to the error stream.
 			</description>
 		</method>
 		<method name="set_handle_caught_errors">
 			<return type="void" />
 			<param index="0" name="enable" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="wake_up">
+			<return type="Variant" />
+			<param index="0" name="value" type="Variant" default="null" />
+			<description>
+			</description>
+		</method>
+		<method name="wake_up_throw">
+			<return type="Variant" />
+			<param index="0" name="exception" type="Variant" />
 			<description>
 			</description>
 		</method>

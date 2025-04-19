@@ -2,6 +2,7 @@
 
 #include <gdextension_interface.h>
 #include <godot_cpp/classes/resource.hpp>
+#include <godot_cpp/variant/typed_dictionary.hpp>
 #ifndef SQUIRREL_NO_IMPORTER
 #include <godot_cpp/classes/editor_import_plugin.hpp>
 #include <godot_cpp/classes/editor_plugin.hpp>
@@ -149,6 +150,7 @@ protected:
 	friend class SquirrelTable;
 	friend class SquirrelArray;
 	friend class SquirrelUserData;
+	friend class SquirrelNativeFunction;
 	friend class SquirrelClass;
 	friend class SquirrelInstance;
 	friend class SquirrelWeakRef;
@@ -183,6 +185,8 @@ public:
 
 	VMState get_state() const;
 	bool is_suspended() const;
+	godot::Variant wake_up(const godot::Variant &p_value = godot::Variant());
+	godot::Variant wake_up_throw(const godot::Variant &p_exception);
 
 	godot::Ref<SquirrelInstance> create_blob(const godot::PackedByteArray &p_data);
 	godot::Ref<SquirrelTable> create_table();
@@ -191,6 +195,8 @@ public:
 	godot::Ref<SquirrelThread> create_thread();
 	godot::Ref<SquirrelUserData> wrap_variant(const godot::Variant &p_value);
 	godot::Ref<SquirrelNativeFunction> wrap_callable(const godot::Callable &p_callable, bool p_varargs);
+	godot::Variant _convert_variant_helper(const godot::Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed);
+	godot::Variant convert_variant(const godot::Variant &p_value, bool p_wrap_unhandled_values);
 
 	int64_t collect_garbage();
 	godot::TypedArray<SquirrelVariant> resurrect_unreachable();
@@ -272,6 +278,7 @@ public:
 	int64_t size() const;
 	void clear();
 	godot::Ref<SquirrelTable> duplicate() const;
+	bool wrap_callables(const godot::TypedDictionary<godot::String, godot::Callable> &p_callables, bool p_varargs);
 };
 
 class SquirrelArray : public SquirrelVariant {
@@ -334,6 +341,9 @@ class SquirrelNativeFunction : public SquirrelAnyFunction {
 
 protected:
 	static void _bind_methods();
+
+public:
+	bool set_params_check(int64_t p_num_args, const godot::String &p_type_mask);
 };
 
 class SquirrelGenerator : public SquirrelVariant {
@@ -341,7 +351,17 @@ class SquirrelGenerator : public SquirrelVariant {
 
 protected:
 	static void _bind_methods();
+
+public:
+	enum GeneratorState {
+		DEAD = 0,
+		RUNNING = 1,
+		SUSPENDED = 2,
+	};
+
+	GeneratorState get_state() const;
 };
+VARIANT_ENUM_CAST(SquirrelGenerator::GeneratorState);
 
 class SquirrelThread : public SquirrelVMBase {
 	GDCLASS(SquirrelThread, SquirrelVMBase);
@@ -444,4 +464,19 @@ public:
 	godot::Array get_args() const;
 
 	static godot::Ref<SquirrelTailCall> make(const godot::Ref<SquirrelFunction> &p_func, const godot::Array &p_args);
+};
+
+class SquirrelSuspend : public SquirrelSpecialReturn {
+	GDCLASS(SquirrelSuspend, SquirrelSpecialReturn);
+
+protected:
+	static void _bind_methods();
+
+	godot::Variant _result;
+
+public:
+	void set_result(const godot::Variant &p_result);
+	godot::Variant get_result() const;
+
+	static godot::Ref<SquirrelSuspend> make(const godot::Variant &p_result);
 };

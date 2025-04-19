@@ -13,6 +13,8 @@
 #include <sqstdstring.h>
 #include <stdarg.h>
 
+#include "godot_squirrel_internals.h"
+
 using namespace godot;
 
 namespace {
@@ -203,6 +205,8 @@ void SquirrelVMBase::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_state"), &SquirrelVMBase::get_state);
 	ClassDB::bind_method(D_METHOD("is_suspended"), &SquirrelVMBase::is_suspended);
+	ClassDB::bind_method(D_METHOD("wake_up", "value"), &SquirrelVMBase::wake_up, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("wake_up_throw", "exception"), &SquirrelVMBase::wake_up_throw);
 
 	ClassDB::bind_method(D_METHOD("create_blob", "data"), &SquirrelVMBase::create_blob);
 	ClassDB::bind_method(D_METHOD("create_table"), &SquirrelVMBase::create_table);
@@ -211,6 +215,7 @@ void SquirrelVMBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_thread"), &SquirrelVMBase::create_thread);
 	ClassDB::bind_method(D_METHOD("wrap_variant", "value"), &SquirrelVMBase::wrap_variant);
 	ClassDB::bind_method(D_METHOD("wrap_callable", "callable", "varargs"), &SquirrelVMBase::wrap_callable, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("convert_variant", "value", "wrap_unhandled_values"), &SquirrelVMBase::convert_variant, DEFVAL(false));
 
 	ClassDB::bind_method(D_METHOD("collect_garbage"), &SquirrelVMBase::collect_garbage);
 	ClassDB::bind_method(D_METHOD("resurrect_unreachable"), &SquirrelVMBase::resurrect_unreachable);
@@ -246,6 +251,14 @@ SquirrelVMBase::SquirrelVMBase(bool create) {
 
 #ifndef SQUIRREL_NO_DEBUG
 		sq_enabledebuginfo(_vm_internal->vm, SQTrue);
+
+		// prevent scripts from messing with our debug settings
+		sq_pushroottable(_vm_internal->vm);
+		sq_pushstring(_vm_internal->vm, "setdebughook", -1);
+		sq_pushstring(_vm_internal->vm, "enabledebuginfo", -1);
+		sq_rawdeleteslot(_vm_internal->vm, -3, SQFalse);
+		sq_rawdeleteslot(_vm_internal->vm, -2, SQFalse);
+		sq_poptop(_vm_internal->vm);
 #endif
 #ifndef SQUIRREL_NO_PRINT
 		sq_setprintfunc(_vm_internal->vm, &SquirrelVMInternal::squirrel_print, &SquirrelVMInternal::squirrel_error);
@@ -625,6 +638,47 @@ bool SquirrelVMBase::is_suspended() const {
 	return sq_getvmstate(vm) == SQ_VMSTATE_SUSPENDED;
 }
 
+Variant SquirrelVMBase::wake_up(const Variant &p_value) {
+	ERR_FAIL_COND_V(!is_suspended(), Variant());
+	GET_VM(Variant());
+
+	ERR_FAIL_COND_V(!push_stack(p_value), Variant());
+	if (unlikely(SQ_FAILED(sq_wakeupvm(vm, SQTrue, SQTrue, SQTrue, SQFalse)))) {
+		sq_poptop(vm);
+		ERR_FAIL_V(Variant());
+	}
+
+	const Variant result = get_stack(-1);
+	sq_poptop(vm);
+
+	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
+		sq_poptop(vm);
+	}
+
+	return result;
+}
+
+Variant SquirrelVMBase::wake_up_throw(const Variant &p_exception) {
+	ERR_FAIL_COND_V(!is_suspended(), Variant());
+	GET_VM(Variant());
+
+	ERR_FAIL_COND_V(!push_stack(p_exception), Variant());
+	sq_throwobject(vm);
+	if (unlikely(SQ_FAILED(sq_wakeupvm(vm, SQFalse, SQTrue, SQTrue, SQTrue)))) {
+		sq_poptop(vm);
+		ERR_FAIL_V(Variant());
+	}
+
+	const Variant result = get_stack(-1);
+	sq_poptop(vm);
+
+	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
+		sq_poptop(vm);
+	}
+
+	return result;
+}
+
 Ref<SquirrelInstance> SquirrelVMBase::create_blob(const PackedByteArray &p_data) {
 	GET_VM(Ref<SquirrelInstance>());
 
@@ -764,6 +818,15 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 		return sq_tailcall(vm, tcargs.size());
 	}
 
+	const Ref<SquirrelSuspend> sus(result);
+	if (sus.is_valid()) {
+		if (likely(vm_base->push_stack(sus->get_result()))) {
+			return sq_suspendvm(vm);
+		}
+
+		return sq_throwerror(vm, "wrapped callable returned SquirrelSuspend with non-Squirrel result value");
+	}
+
 	if (likely(vm_base->push_stack(result))) {
 		return 1;
 	}
@@ -788,6 +851,107 @@ Ref<SquirrelNativeFunction> SquirrelVMBase::wrap_callable(const Callable &p_call
 	sq_poptop(vm);
 
 	return nf;
+}
+
+Variant SquirrelVMBase::_convert_variant_helper(const Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed) {
+	if (r_failed) {
+		return Variant();
+	}
+
+	switch (p_value.get_type()) {
+	case Variant::NIL:
+	case Variant::BOOL:
+	case Variant::INT:
+	case Variant::FLOAT:
+	case Variant::STRING:
+	{
+		return p_value;
+	}
+	case Variant::STRING_NAME:
+	{
+		return p_value.operator String();
+	}
+	case Variant::VECTOR2:
+	case Variant::VECTOR2I:
+	case Variant::RECT2:
+	case Variant::RECT2I:
+	case Variant::VECTOR3:
+	case Variant::VECTOR3I:
+	case Variant::TRANSFORM2D:
+	case Variant::VECTOR4:
+	case Variant::VECTOR4I:
+	case Variant::PLANE:
+	case Variant::QUATERNION:
+	case Variant::AABB:
+	case Variant::BASIS:
+	case Variant::TRANSFORM3D:
+	case Variant::PROJECTION:
+	case Variant::COLOR:
+	case Variant::NODE_PATH:
+	case Variant::RID:
+	case Variant::SIGNAL:
+	case Variant::CALLABLE: // treat Callable as an opaque type to avoid giving Squirrel access to functions that might not understand Squirrel calls (and because we don't know which form of the calling convention it wants)
+	case Variant::PACKED_VECTOR2_ARRAY:
+	case Variant::PACKED_VECTOR3_ARRAY:
+	case Variant::PACKED_COLOR_ARRAY:
+	case Variant::PACKED_VECTOR4_ARRAY:
+	{
+		ERR_FAIL_COND_V_MSG(!p_wrap_unhandled_values, (r_failed = true, Variant()), vformat("Cannot convert %s %s to Squirrel value", Variant::get_type_name(p_value.get_type()), p_value));
+		return wrap_variant(p_value);
+	}
+	case Variant::OBJECT:
+	{
+		if (Ref<SquirrelVariant>(p_value).is_valid() && Ref<SquirrelVariant>(p_value)->is_owned_by(this)) {
+			return p_value;
+		}
+		Object *obj = p_value;
+		ERR_FAIL_COND_V_MSG(!p_wrap_unhandled_values, (r_failed = true, Variant()), vformat("Cannot convert %s object %s to Squirrel value", obj ? obj->get_class() : "<null>", p_value));
+		return wrap_variant(p_value);
+	}
+	case Variant::DICTIONARY:
+	{
+		const Dictionary dict = p_value;
+		const Array keys = dict.keys();
+		const Ref<SquirrelTable> table = create_table_with_initial_capacity(keys.size());
+		for (int64_t i = 0; !r_failed && i < keys.size(); i++) {
+			table->new_slot(_convert_variant_helper(keys[i], p_wrap_unhandled_values, r_failed), _convert_variant_helper(dict[keys[i]], p_wrap_unhandled_values, r_failed));
+		}
+		return r_failed ? Variant() : Variant(table);
+	}
+	case Variant::ARRAY:
+	{
+		const Array array = p_value;
+		const Ref<SquirrelArray> squirrel_array = create_array(array.size());
+		for (int64_t i = 0; !r_failed && i < array.size(); i++) {
+			squirrel_array->set_item(i, _convert_variant_helper(array[i], p_wrap_unhandled_values, r_failed));
+		}
+		return r_failed ? Variant() : Variant(squirrel_array);
+	}
+	case Variant::PACKED_BYTE_ARRAY:
+	case Variant::PACKED_INT32_ARRAY:
+	case Variant::PACKED_INT64_ARRAY:
+	case Variant::PACKED_FLOAT32_ARRAY:
+	case Variant::PACKED_FLOAT64_ARRAY:
+	case Variant::PACKED_STRING_ARRAY:
+	{
+		const Array wrapped_array = p_value;
+		const Ref<SquirrelArray> packed_array = create_array(wrapped_array.size());
+		for (int64_t i = 0; i < wrapped_array.size(); i++) {
+			packed_array->set_item(i, wrapped_array[i]);
+		}
+		return packed_array;
+	}
+	case Variant::VARIANT_MAX:
+		break;
+	}
+
+	ERR_FAIL_V_MSG((r_failed = true, Variant()), vformat("Unexpected Variant type %s", Variant::get_type_name(p_value.get_type())));
+}
+
+Variant SquirrelVMBase::convert_variant(const Variant &p_value, bool p_wrap_unhandled_values) {
+	bool failed = false;
+	const Variant result = _convert_variant_helper(p_value, p_wrap_unhandled_values, failed);
+	return unlikely(failed) ? Variant() : result;
 }
 
 int64_t SquirrelVMBase::collect_garbage() {
@@ -1119,6 +1283,7 @@ void SquirrelTable::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("size"), &SquirrelTable::size);
 	ClassDB::bind_method(D_METHOD("clear"), &SquirrelTable::clear);
 	ClassDB::bind_method(D_METHOD("duplicate"), &SquirrelTable::duplicate);
+	ClassDB::bind_method(D_METHOD("wrap_callables", "callables", "varargs"), &SquirrelTable::wrap_callables);
 }
 
 bool SquirrelTable::set_delegate(const Ref<SquirrelTable> &p_delegate) {
@@ -1133,6 +1298,8 @@ bool SquirrelTable::set_delegate(const Ref<SquirrelTable> &p_delegate) {
 	}
 	bool ok = SQ_SUCCEEDED(sq_setdelegate(_vm->_vm_internal->vm, -2));
 	sq_poptop(_vm->_vm_internal->vm);
+
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
 
 	return ok;
 }
@@ -1168,6 +1335,8 @@ bool SquirrelTable::new_slot(const Variant &p_key, const Variant &p_value) {
 	const bool ok = SQ_SUCCEEDED(sq_newslot(_vm->_vm_internal->vm, -3, SQFalse));
 	sq_pop(_vm->_vm_internal->vm, ok ? 1 : 3);
 
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+
 	return ok;
 }
 
@@ -1191,6 +1360,8 @@ bool SquirrelTable::set_slot(const Variant &p_key, const Variant &p_value, bool 
 		SQ_SUCCEEDED(sq_rawset(_vm->_vm_internal->vm, -3)) :
 		SQ_SUCCEEDED(sq_set(_vm->_vm_internal->vm, -3));
 	sq_pop(_vm->_vm_internal->vm, ok || p_raw ? 1 : 3);
+
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
 
 	return ok;
 }
@@ -1271,6 +1442,28 @@ Ref<SquirrelTable> SquirrelTable::duplicate() const {
 	return table;
 }
 
+bool SquirrelTable::wrap_callables(const TypedDictionary<String, Callable> &p_callables, bool p_varargs) {
+	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
+
+	const PackedStringArray keys(p_callables.keys());
+
+	// create functions before assigning any so we can be atomic
+	HashMap<String, Ref<SquirrelNativeFunction>> functions;
+	for (int64_t i = 0; i < keys.size(); i++) {
+		const Ref<SquirrelNativeFunction> func = _vm->wrap_callable(p_callables[keys[i]], p_varargs);
+		ERR_FAIL_COND_V(func.is_null(), false);
+		functions.insert(keys[i], func);
+	}
+
+	bool ok = true;
+	for (int64_t i = 0; i < keys.size(); i++) {
+		// keep going even if it fails at this point
+		ok = new_slot(keys[i], functions.get(keys[i])) && ok;
+	}
+
+	return ok;
+}
+
 void SquirrelArray::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_item", "index", "value"), &SquirrelArray::set_item);
 	ClassDB::bind_method(D_METHOD("get_item", "index"), &SquirrelArray::get_item);
@@ -1333,6 +1526,8 @@ bool SquirrelArray::append(const Variant &p_value) {
 	bool ok = SQ_SUCCEEDED(sq_arrayappend(_vm->_vm_internal->vm, -1));
 	sq_poptop(_vm->_vm_internal->vm);
 
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+
 	return ok;
 }
 
@@ -1348,6 +1543,8 @@ bool SquirrelArray::insert(int64_t p_index, const Variant &p_value) {
 	bool ok = SQ_SUCCEEDED(sq_arrayinsert(_vm->_vm_internal->vm, -1, p_index));
 	sq_poptop(_vm->_vm_internal->vm);
 
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+
 	return ok;
 }
 
@@ -1357,6 +1554,8 @@ bool SquirrelArray::remove(int64_t p_index) {
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 	bool ok = SQ_SUCCEEDED(sq_arrayremove(_vm->_vm_internal->vm, -1, p_index));
 	sq_poptop(_vm->_vm_internal->vm);
+
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
 
 	return ok;
 }
@@ -1382,6 +1581,8 @@ bool SquirrelArray::resize(int64_t p_size) {
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 	bool ok = SQ_SUCCEEDED(sq_arrayresize(_vm->_vm_internal->vm, -1, p_size));
 	sq_poptop(_vm->_vm_internal->vm);
+
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
 
 	return ok;
 }
@@ -1446,6 +1647,8 @@ bool SquirrelUserData::set_delegate(const Ref<SquirrelTable> &p_delegate) {
 	bool ok = SQ_SUCCEEDED(sq_setdelegate(_vm->_vm_internal->vm, -2));
 	sq_poptop(_vm->_vm_internal->vm);
 
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+
 	return ok;
 }
 
@@ -1488,9 +1691,36 @@ void SquirrelFunction::_bind_methods() {
 }
 
 void SquirrelNativeFunction::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_params_check", "num_args", "type_mask"), &SquirrelNativeFunction::set_params_check, DEFVAL(String()));
+}
+
+bool SquirrelNativeFunction::set_params_check(int64_t p_num_args, const String &p_type_mask) {
+	ERR_FAIL_COND_V(!sq_isnativeclosure(_internal->obj), false);
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	bool ok = SQ_SUCCEEDED(sq_setparamscheck(_vm->_vm_internal->vm, p_num_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_num_args, p_type_mask.utf8()));
+	sq_poptop(_vm->_vm_internal->vm);
+
+	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+
+	return ok;
 }
 
 void SquirrelGenerator::_bind_methods() {
+	BIND_ENUM_CONSTANT(DEAD);
+	static_assert(DEAD == SQ_VMSTATE_IDLE);
+	BIND_ENUM_CONSTANT(RUNNING);
+	static_assert(RUNNING == SQ_VMSTATE_RUNNING);
+	BIND_ENUM_CONSTANT(SUSPENDED);
+	static_assert(SUSPENDED == SQ_VMSTATE_SUSPENDED);
+
+	ClassDB::bind_method(D_METHOD("get_state"), &SquirrelGenerator::get_state);
+}
+
+SquirrelGenerator::GeneratorState SquirrelGenerator::get_state() const {
+	ERR_FAIL_COND_V(!sq_isgenerator(_internal->obj), DEAD);
+
+	return static_cast<SquirrelGenerator::GeneratorState>(godot_squirrel_get_generator_state(&_internal->obj));
 }
 
 void SquirrelThread::_bind_methods() {
@@ -1658,11 +1888,30 @@ Ref<SquirrelTailCall> SquirrelTailCall::make(const Ref<SquirrelFunction> &p_func
 	return tc;
 }
 
+void SquirrelSuspend::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_result", "result"), &SquirrelSuspend::set_result);
+	ClassDB::bind_method(D_METHOD("get_result"), &SquirrelSuspend::get_result);
+	ADD_PROPERTY(PropertyInfo(Variant::NIL, "result", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_NIL_IS_VARIANT), "set_result", "get_result");
+
+	ClassDB::bind_static_method(get_class_static(), D_METHOD("make", "result"), &SquirrelSuspend::make);
+}
+
+void SquirrelSuspend::set_result(const Variant &p_result) {
+	_result = p_result;
+}
+
+Variant SquirrelSuspend::get_result() const {
+	return _result;
+}
+
+Ref<SquirrelSuspend> SquirrelSuspend::make(const Variant &p_result) {
+	Ref<SquirrelSuspend> sus;
+	sus.instantiate();
+	sus->set_result(p_result);
+	return sus;
+}
+
 // TODO:
-//
-// VM
-// SQUIRREL_API SQRESULT sq_suspendvm(HSQUIRRELVM v);
-// SQUIRREL_API SQRESULT sq_wakeupvm(HSQUIRRELVM v,SQBool resumedret,SQBool retval,SQBool raiseerror,SQBool throwerror);
 //
 // DEBUG
 // SQUIRREL_API SQRESULT sq_stackinfos(HSQUIRRELVM v,SQInteger level,SQStackInfos *si);
@@ -1686,7 +1935,6 @@ Ref<SquirrelTailCall> SquirrelTailCall::make(const Ref<SquirrelFunction> &p_func
 // SQUIRREL_API SQRESULT sq_getclass(HSQUIRRELVM v,SQInteger idx);
 //
 // FUNC/CLOSURE
-// SQUIRREL_API SQRESULT sq_setparamscheck(HSQUIRRELVM v,SQInteger nparamscheck,const SQChar *typemask);
 // SQUIRREL_API SQRESULT sq_bindenv(HSQUIRRELVM v,SQInteger idx);
 // SQUIRREL_API SQRESULT sq_setclosureroot(HSQUIRRELVM v,SQInteger idx);
 // SQUIRREL_API SQRESULT sq_getclosureroot(HSQUIRRELVM v,SQInteger idx);

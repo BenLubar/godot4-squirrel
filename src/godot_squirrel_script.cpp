@@ -175,7 +175,12 @@ TypedArray<Dictionary> SquirrelEditorImportPlugin::_get_import_options(const Str
 		Dictionary option_compile;
 		option_compile["name"] = "compile";
 		option_compile["default_value"] = true;
-		return Array::make(option_compile);
+
+		Dictionary option_clear_source;
+		option_clear_source["name"] = "clear_source";
+		option_clear_source["default_value"] = false;
+
+		return Array::make(option_compile, option_clear_source);
 	}
 
 	return TypedArray<Dictionary>();
@@ -196,6 +201,10 @@ int32_t SquirrelEditorImportPlugin::_get_format_version() const {
 	return SQUIRREL_VERSION_NUMBER;
 }
 bool SquirrelEditorImportPlugin::_get_option_visibility(const String &p_path, const StringName &p_option_name, const Dictionary &p_options) const {
+	if (p_option_name == StringName("clear_source")) {
+		return p_options.get("compile", false);
+	}
+
 	return true;
 }
 Error SquirrelEditorImportPlugin::_import(const String &p_source_file, const String &p_save_path, const Dictionary &p_options, const TypedArray<String> &p_platform_variants, const TypedArray<String> &p_gen_files) const {
@@ -214,6 +223,10 @@ Error SquirrelEditorImportPlugin::_import(const String &p_source_file, const Str
 	if (p_options.get("compile", false)) {
 		Error error = script->compile(p_source_file);
 		ERR_FAIL_COND_V_MSG(error != OK, error, vformat("Squirrel compile error: %s in %s:%d:%d", script->get_error_desc(), script->get_error_source(), script->get_error_line(), script->get_error_column()));
+
+		if (p_options.get("clear_source", false)) {
+			script->set_source(String());
+		}
 	}
 
 	return ResourceSaver::get_singleton()->save(script, vformat("%s.%s", p_save_path, _get_save_extension()), ResourceSaver::FLAG_COMPRESS);
