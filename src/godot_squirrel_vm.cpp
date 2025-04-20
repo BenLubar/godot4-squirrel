@@ -64,7 +64,7 @@ struct SquirrelVariant::SquirrelVariantInternal {
 	void init(const Ref<SquirrelVM> &vm, SquirrelVariant *outer, const HSQOBJECT &init_obj);
 };
 
-struct SquirrelVM::SquirrelVMInternal {
+struct SquirrelVMBase::SquirrelVMInternal {
 	HSQUIRRELVM vm;
 
 	struct SQObjectHasher {

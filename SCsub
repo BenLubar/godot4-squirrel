@@ -3,7 +3,7 @@
 Import("env")
 
 # give parent environment access to godot-cpp bindings for types
-env.Append(CPPPATH=["src/"])
+env.Append(CPPPATH=[env.Dir("src/")])
 
 env_squirrel = env.Clone()
 
