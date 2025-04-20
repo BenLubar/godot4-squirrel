@@ -12,69 +12,16 @@
 	<tutorials>
 		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
 	</tutorials>
-	<methods>
-		<method name="get_array_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#array]array[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_class_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#class]class[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_closure_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#function]function[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_generator_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#generator]generator[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_instance_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#class-instance]class instance[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_number_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the shared [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#integer]integer[/url] and [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#float]float[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_string_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#string]string[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_table_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#table]table[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_thread_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#thread]thread[/url] delegate table.
-			</description>
-		</method>
-		<method name="get_weak_ref_default_delegate" qualifiers="const">
-			<return type="SquirrelTable" />
-			<description>
-				Returns the [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#weak-reference]weak reference[/url] delegate table.
-			</description>
-		</method>
-	</methods>
 	<members>
+		<member name="array_default_delegate" type="SquirrelTable" setter="" getter="get_array_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#array]array[/url] delegate table.
+		</member>
+		<member name="class_default_delegate" type="SquirrelTable" setter="" getter="get_class_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#class]class[/url] delegate table.
+		</member>
+		<member name="closure_default_delegate" type="SquirrelTable" setter="" getter="get_closure_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#function]function[/url] delegate table.
+		</member>
 		<member name="debug_enabled" type="bool" setter="set_debug_enabled" getter="is_debug_enabled" default="false">
 			Controls whether [signal debug_call], [signal debug_return], and [signal debug_line] will be emitted.
 			[b]Note:[/b] This property only affects [SquirrelThread]s created after it is changed.
@@ -83,9 +30,30 @@
 			Function to be called with a [String] containing an error message.
 			If this property is null, a function similar to [method @GlobalScope.push_error] will be used.
 		</member>
+		<member name="generator_default_delegate" type="SquirrelTable" setter="" getter="get_generator_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#generator]generator[/url] delegate table.
+		</member>
+		<member name="instance_default_delegate" type="SquirrelTable" setter="" getter="get_instance_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#class-instance]class instance[/url] delegate table.
+		</member>
+		<member name="number_default_delegate" type="SquirrelTable" setter="" getter="get_number_default_delegate">
+			The shared [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#integer]integer[/url] and [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#float]float[/url] delegate table.
+		</member>
 		<member name="print_func" type="Callable" setter="set_print_func" getter="get_print_func" default="Callable()">
 			Function to be called with a [String] containing text to print.
 			If this property is null, a function similar to [method @GlobalScope.print] will be used.
+		</member>
+		<member name="string_default_delegate" type="SquirrelTable" setter="" getter="get_string_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#string]string[/url] delegate table.
+		</member>
+		<member name="table_default_delegate" type="SquirrelTable" setter="" getter="get_table_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#table]table[/url] delegate table.
+		</member>
+		<member name="thread_default_delegate" type="SquirrelTable" setter="" getter="get_thread_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#thread]thread[/url] delegate table.
+		</member>
+		<member name="weak_ref_default_delegate" type="SquirrelTable" setter="" getter="get_weak_ref_default_delegate">
+			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#weak-reference]weak reference[/url] delegate table.
 		</member>
 	</members>
 	<signals>

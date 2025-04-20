@@ -195,7 +195,7 @@
 			<return type="void" />
 			<param index="0" name="func" type="SquirrelAnyFunction" />
 			<description>
-				Defines a function that will be called
+				Defines a function that will be called when an exception is thrown in Squirrel.
 			</description>
 		</method>
 		<method name="set_error_handler_default">
@@ -208,6 +208,7 @@
 			<return type="void" />
 			<param index="0" name="enable" type="bool" />
 			<description>
+				Causes the VM to call the error handler even if an exception is caught.
 			</description>
 		</method>
 		<method name="wake_up">
@@ -228,7 +229,8 @@
 			<param index="1" name="varargs" type="bool" default="false" />
 			<description>
 				Creates a [SquirrelNativeFunction] that calls [param callable].
-				If [param varargs] is true, the function will be called as [param callable](vm_or_thread: [SquirrelVMBase], this: [Variant], args: [Array]). Otherwise, the function will be called as [param callable](this, arg1, arg2, arg3, ..., argn).
+				If [param varargs] is true, the function will be called as: [gdscript]callable(vm_or_thread: SquirrelVMBase, this: Variant, args: Array)[/gdscript]
+				Otherwise, the function will be called as: [gdscript]callable(arg1, arg2, arg3, ..., argn)[/gdscript]
 				[b]Note:[/b] Due to limitations in Godot, calling a function with the wrong parameters in Squirrel will act as if the function immediately returned [code]null[/code].
 			</description>
 		</method>

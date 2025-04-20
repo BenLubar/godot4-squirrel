@@ -781,8 +781,9 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 		args[i] = vm_base->get_stack(i + 1);
 	}
 
+	const Variant this_obj = args.pop_front();
 	if (varargs) {
-		args = Array::make(vm_base, args[0], args.slice(1));
+		args = Array::make(vm_base, this_obj, args);
 	}
 
 	const Variant result = func.callv(args);
@@ -793,7 +794,7 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 			return sq_throwobject(vm);
 		}
 
-		return sq_throwerror(vm, "wrapped callable returned SquirrelThrow with non-Squirrel exception value");
+		ERR_FAIL_V(sq_throwerror(vm, "wrapped callable returned SquirrelThrow with non-Squirrel exception value"));
 	}
 
 	const Ref<SquirrelTailCall> tc(result);
@@ -802,16 +803,16 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 		if (likely(tcfunc.is_valid() && tcfunc->is_owned_by(outer_vm))) {
 			sq_pushobject(vm, tcfunc->_internal->obj);
 		} else if (tcfunc.is_null()) {
-			return sq_throwerror(vm, "wrapped callable returned SquirrelTailCall with null function");
+			ERR_FAIL_V(sq_throwerror(vm, "wrapped callable returned SquirrelTailCall with null function"));
 		} else {
-			return sq_throwerror(vm, "wrapped callable returned SquirrelTailCall with invalid function for this VM");
+			ERR_FAIL_V(sq_throwerror(vm, "wrapped callable returned SquirrelTailCall with invalid function for this VM"));
 		}
 
 		const Array tcargs = tc->get_args();
 		for (int64_t i = 0; i < tcargs.size(); i++) {
 			if (unlikely(!vm_base->push_stack(tcargs[i]))) {
 				sq_pop(vm, i + 1);
-				return sq_throwerror(vm, "wrapped callable returned SquirrelTailCall with non-Squirrel arguments");
+				ERR_FAIL_V(sq_throwerror(vm, "wrapped callable returned SquirrelTailCall with non-Squirrel arguments"));
 			}
 		}
 
@@ -824,7 +825,7 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 			return sq_suspendvm(vm);
 		}
 
-		return sq_throwerror(vm, "wrapped callable returned SquirrelSuspend with non-Squirrel result value");
+		ERR_FAIL_V(sq_throwerror(vm, "wrapped callable returned SquirrelSuspend with non-Squirrel result value"));
 	}
 
 	if (likely(vm_base->push_stack(result))) {
@@ -833,7 +834,7 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 
 	DEV_ASSERT(Ref<SquirrelSpecialReturn>(result).is_null());
 
-	return sq_throwerror(vm, "wrapped callable returned non-Squirrel value");
+	ERR_FAIL_V(sq_throwerror(vm, "wrapped callable returned non-Squirrel value"));
 }
 
 Ref<SquirrelNativeFunction> SquirrelVMBase::wrap_callable(const Callable &p_callable, bool p_varargs) {
@@ -1073,15 +1074,25 @@ void SquirrelVM::_bind_methods() {
 #endif
 
 	ClassDB::bind_method(D_METHOD("get_table_default_delegate"), &SquirrelVM::get_table_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "table_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_table_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_array_default_delegate"), &SquirrelVM::get_array_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "array_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_array_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_string_default_delegate"), &SquirrelVM::get_string_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "string_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_string_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_number_default_delegate"), &SquirrelVM::get_number_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "number_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_number_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_generator_default_delegate"), &SquirrelVM::get_generator_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "generator_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_generator_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_closure_default_delegate"), &SquirrelVM::get_closure_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "closure_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_closure_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_thread_default_delegate"), &SquirrelVM::get_thread_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "thread_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_thread_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_class_default_delegate"), &SquirrelVM::get_class_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "class_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_class_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_instance_default_delegate"), &SquirrelVM::get_instance_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "instance_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_instance_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_weak_ref_default_delegate"), &SquirrelVM::get_weak_ref_default_delegate);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "weak_ref_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_weak_ref_default_delegate");
 }
 
 SquirrelVM::SquirrelVM() : SquirrelVMBase(true) {
