@@ -1,6 +1,7 @@
 [submodule "squirrel"]
 	path = squirrel
 	url = https://github.com/albertodemichelis/squirrel.git
+	ignore = untracked
 [submodule "godot-cpp"]
 	path = godot-cpp
 	url = https://github.com/godotengine/godot-cpp.git
