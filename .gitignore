@@ -3,5 +3,6 @@ compile_commands.json
 project/.godot/
 project/bin/*.so
 project/bin/*.dll
+*.o
 *.os
 src/gen/
