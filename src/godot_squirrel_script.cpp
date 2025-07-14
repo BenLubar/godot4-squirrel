@@ -143,10 +143,6 @@ Error SquirrelScript::compile(const String &p_debug_file_name) {
 	return FAILED;
 }
 
-String SquirrelScript::_to_string() const {
-	return vformat("<%s:%d>", get_class(), get_instance_id());
-}
-
 #ifndef SQUIRREL_NO_IMPORTER
 void SquirrelEditorImportPlugin::_bind_methods() {
 }
@@ -252,9 +248,5 @@ void SquirrelEditorPlugin::_enter_tree() {
 
 void SquirrelEditorPlugin::_exit_tree() {
 	remove_import_plugin(_importer);
-}
-
-String SquirrelEditorPlugin::_to_string() const {
-	return vformat("<%s:%d>", get_class(), get_instance_id());
 }
 #endif

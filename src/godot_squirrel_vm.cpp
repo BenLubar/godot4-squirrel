@@ -1826,15 +1826,7 @@ Variant SquirrelIterator::get_value() const {
 	return _value;
 }
 
-String SquirrelIterator::_to_string() const {
-	return vformat("<%s:%d>", get_class(), get_instance_id());
-}
-
 void SquirrelSpecialReturn::_bind_methods() {
-}
-
-String SquirrelSpecialReturn::_to_string() const {
-	return vformat("<%s:%d>", get_class(), get_instance_id());
 }
 
 void SquirrelThrow::_bind_methods() {

@@ -45,8 +45,6 @@ public:
 	void set_error_column(int64_t p_error_column);
 
 	godot::Error compile(const godot::String &p_debug_file_name = godot::String());
-
-	godot::String _to_string() const;
 };
 
 #ifndef SQUIRREL_NO_IMPORTER
@@ -89,8 +87,6 @@ public:
 
 	void _enter_tree() override;
 	void _exit_tree() override;
-
-	godot::String _to_string() const;
 };
 #endif
 
@@ -418,8 +414,6 @@ public:
 
 	void set_value(const godot::Variant &p_value);
 	godot::Variant get_value() const;
-
-	godot::String _to_string() const;
 };
 
 class SquirrelSpecialReturn : public godot::RefCounted {
@@ -429,7 +423,6 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::String _to_string() const;
 };
 
 class SquirrelThrow : public SquirrelSpecialReturn {
