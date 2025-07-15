@@ -190,6 +190,7 @@ public:
 	godot::Ref<SquirrelArray> create_array(int64_t p_size);
 	godot::Ref<SquirrelThread> create_thread();
 	godot::Ref<SquirrelUserData> wrap_variant(const godot::Variant &p_value);
+	godot::Ref<SquirrelUserData> intern_variant(const godot::Variant &p_value);
 	godot::Ref<SquirrelNativeFunction> wrap_callable(const godot::Callable &p_callable, bool p_varargs);
 	godot::Variant _convert_variant_helper(const godot::Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed);
 	godot::Variant convert_variant(const godot::Variant &p_value, bool p_wrap_unhandled_values);

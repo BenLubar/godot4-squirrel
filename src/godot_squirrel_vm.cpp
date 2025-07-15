@@ -84,6 +84,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 		}
 	};
 	HashMap<HSQOBJECT, SquirrelVariant *, SQObjectHasher, SQObjectComparator> ref_objects;
+	HashMap<Variant, Ref<SquirrelWeakRef>, VariantHasher, VariantComparator> memoized_variants;
 
 	template<typename T>
 	Ref<T> make_ref_object(const HSQOBJECT &obj) {
@@ -93,6 +94,21 @@ struct SquirrelVMBase::SquirrelVMInternal {
 		ref.instantiate();
 		ref->_internal->init(reinterpret_cast<SquirrelVM *>(sq_getsharedforeignptr(vm)), ref.ptr(), obj);
 		return ref;
+	}
+
+	void clean_memoized_variants() {
+		bool found = true;
+		while (found) {
+			found = false;
+			for (auto it = memoized_variants.begin(); it != memoized_variants.end(); ++it) {
+				const Ref<SquirrelUserData> ud = it->value->get_object();
+				if (ud.is_null()) {
+					memoized_variants.remove(it);
+					found = true;
+					break;
+				}
+			}
+		}
 	}
 
 #ifndef SQUIRREL_NO_DEBUG
@@ -214,6 +230,7 @@ void SquirrelVMBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_array", "size"), &SquirrelVMBase::create_array);
 	ClassDB::bind_method(D_METHOD("create_thread"), &SquirrelVMBase::create_thread);
 	ClassDB::bind_method(D_METHOD("wrap_variant", "value"), &SquirrelVMBase::wrap_variant);
+	ClassDB::bind_method(D_METHOD("intern_variant", "value"), &SquirrelVMBase::intern_variant);
 	ClassDB::bind_method(D_METHOD("wrap_callable", "callable", "varargs"), &SquirrelVMBase::wrap_callable, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("convert_variant", "value", "wrap_unhandled_values"), &SquirrelVMBase::convert_variant, DEFVAL(false));
 
@@ -425,6 +442,7 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 	ERR_FAIL_COND_V(!func->is_owned_by(this), Variant());
 
 	GET_VM(Variant());
+	GET_OUTER_VM();
 
 	sq_pushobject(vm, func->_internal->obj);
 	for (int arg = 1; arg < p_arg_count; arg++) {
@@ -433,12 +451,14 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 			r_error.error = GDEXTENSION_CALL_ERROR_INVALID_ARGUMENT;
 			r_error.argument = arg;
 			r_error.expected = GDEXTENSION_VARIANT_TYPE_OBJECT;
+			outer_vm->_vm_internal->clean_memoized_variants();
 			ERR_FAIL_V(Variant());
 		}
 	}
 
 	if (unlikely(SQ_FAILED(sq_call(vm, p_arg_count - 1, SQTrue, SQTrue)))) {
 		sq_poptop(vm);
+		outer_vm->_vm_internal->clean_memoized_variants();
 		ERR_FAIL_V(Variant());
 	}
 
@@ -448,6 +468,8 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
 		sq_poptop(vm);
 	}
+
+	outer_vm->_vm_internal->clean_memoized_variants();
 
 	return result;
 }
@@ -457,21 +479,25 @@ Variant SquirrelVMBase::apply_function(const Ref<SquirrelCallable> &p_func, cons
 	ERR_FAIL_COND_V(!p_func->is_owned_by(this), Variant());
 
 	GET_VM(Variant());
+	GET_OUTER_VM();
 
 	sq_pushobject(vm, p_func->_internal->obj);
 	if (unlikely(!push_stack(p_this))) {
 		sq_poptop(vm);
+		outer_vm->_vm_internal->clean_memoized_variants();
 		ERR_FAIL_V(Variant());
 	}
 	for (int64_t i = 0; i < p_args.size(); i++) {
 		if (unlikely(!push_stack(p_args[i]))) {
 			sq_pop(vm, i + 2);
+			outer_vm->_vm_internal->clean_memoized_variants();
 			ERR_FAIL_V(Variant());
 		}
 	}
 
 	if (unlikely(SQ_FAILED(sq_call(vm, p_args.size(), SQTrue, SQTrue)))) {
 		sq_poptop(vm);
+		outer_vm->_vm_internal->clean_memoized_variants();
 		ERR_FAIL_V(Variant());
 	}
 
@@ -481,6 +507,8 @@ Variant SquirrelVMBase::apply_function(const Ref<SquirrelCallable> &p_func, cons
 	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
 		sq_poptop(vm);
 	}
+
+	outer_vm->_vm_internal->clean_memoized_variants();
 
 	return result;
 }
@@ -754,6 +782,26 @@ Ref<SquirrelUserData> SquirrelVMBase::wrap_variant(const Variant &p_value) {
 	sq_poptop(vm);
 
 	return ud;
+}
+
+Ref<SquirrelUserData> SquirrelVMBase::intern_variant(const Variant &p_value) {
+	GET_VM(Ref<SquirrelUserData>());
+	GET_OUTER_VM();
+
+	auto it = outer_vm->_vm_internal->memoized_variants.find(p_value);
+	if (it != outer_vm->_vm_internal->memoized_variants.end()) {
+		const Ref<SquirrelUserData> ud = it->value->get_object();
+		if (ud.is_valid()) {
+			return ud;
+		}
+	}
+
+	outer_vm->_vm_internal->clean_memoized_variants();
+
+	const Ref<SquirrelUserData> wrapped = wrap_variant(p_value);
+	outer_vm->_vm_internal->memoized_variants[p_value] = wrapped->weak_ref();
+
+	return wrapped;
 }
 
 SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRELVM vm) {

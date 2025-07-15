@@ -14,3 +14,4 @@ dest_files=["res://.godot/imported/hello.nut-0d3085fd4ee72a3c2c656deff30b63f0.re
 [params]
 
 compile=true
+clear_source=false

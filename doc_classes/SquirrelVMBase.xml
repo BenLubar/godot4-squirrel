@@ -142,6 +142,13 @@
 				Imports the [url=http://www.squirrel-lang.org/squirreldoc/stdlib/stdstringlib.html]string[/url] library.
 			</description>
 		</method>
+		<method name="intern_variant">
+			<return type="SquirrelUserData" />
+			<param index="0" name="value" type="Variant" />
+			<description>
+				Similar to [method wrap_variant], but returns the same [SquirrelUserData] instance for a given [param value] as long as it is reachable.
+			</description>
+		</method>
 		<method name="is_suspended" qualifiers="const">
 			<return type="bool" />
 			<description>
