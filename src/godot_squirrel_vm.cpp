@@ -1337,6 +1337,7 @@ void SquirrelTable::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("new_slot", "key", "value"), &SquirrelTable::new_slot);
 	ClassDB::bind_method(D_METHOD("set_slot", "key", "value", "raw"), &SquirrelTable::set_slot, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("has_slot", "key", "raw"), &SquirrelTable::has_slot, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("get_slot", "key", "raw"), &SquirrelTable::get_slot, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("delete_slot", "key", "raw"), &SquirrelTable::delete_slot, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("size"), &SquirrelTable::size);
@@ -1423,6 +1424,31 @@ bool SquirrelTable::set_slot(const Variant &p_key, const Variant &p_value, bool 
 	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
 
 	return ok;
+}
+
+bool SquirrelTable::has_slot(const Variant &p_key, bool p_raw) const {
+	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!_vm->push_stack(p_key))) {
+		sq_poptop(_vm->_vm_internal->vm);
+
+		return false;
+	}
+
+	const bool ok = p_raw ?
+		SQ_SUCCEEDED(sq_rawget(_vm->_vm_internal->vm, -2)) :
+		SQ_SUCCEEDED(sq_get(_vm->_vm_internal->vm, -2));
+
+	if (likely(ok)) {
+		sq_pop(_vm->_vm_internal->vm, 2);
+
+		return true;
+	}
+
+	sq_poptop(_vm->_vm_internal->vm);
+
+	return false;
 }
 
 Variant SquirrelTable::get_slot(const Variant &p_key, bool p_raw) const {

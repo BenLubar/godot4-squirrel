@@ -37,6 +37,15 @@
 				Returns [code]null[/code] if it fails.
 			</description>
 		</method>
+		<method name="has_slot" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="key" type="Variant" />
+			<param index="1" name="raw" type="bool" default="false" />
+			<description>
+				Returns [code]true[/code] if the slot with the given [param key] exists.
+				Returns [code]false[/code] otherwise.
+			</description>
+		</method>
 		<method name="new_slot">
 			<return type="bool" />
 			<param index="0" name="key" type="Variant" />

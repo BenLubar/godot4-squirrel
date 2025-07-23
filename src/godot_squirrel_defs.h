@@ -270,6 +270,7 @@ public:
 
 	bool new_slot(const godot::Variant &p_key, const godot::Variant &p_value);
 	bool set_slot(const godot::Variant &p_key, const godot::Variant &p_value, bool p_raw = false);
+	bool has_slot(const godot::Variant &p_key, bool p_raw = false) const;
 	godot::Variant get_slot(const godot::Variant &p_key, bool p_raw = false) const;
 	void delete_slot(const godot::Variant &p_key, bool p_raw = false);
 	int64_t size() const;
