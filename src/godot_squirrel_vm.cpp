@@ -114,7 +114,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 #ifndef SQUIRREL_NO_DEBUG
 	static void debug_hook(HSQUIRRELVM v, SQInteger type, const SQChar *sourcename, SQInteger line, const SQChar *funcname) {
 		SquirrelVM *vm = reinterpret_cast<SquirrelVM *>(sq_getsharedforeignptr(v));
-		Ref<SquirrelVM> vm_or_thread = vm;
+		Ref<SquirrelVMBase> vm_or_thread = vm;
 		if (vm->_vm_internal->vm != v) {
 			HSQOBJECT obj;
 			obj._type = OT_THREAD;
