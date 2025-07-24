@@ -623,8 +623,14 @@ bool SquirrelVMBase::push_stack(const godot::Variant &p_value) {
 	}
 	case Variant::OBJECT:
 	{
-		Ref<SquirrelVariant> sqvar = p_value;
-		ERR_FAIL_COND_V_MSG(sqvar.is_null(), false, vformat("Cannot push object of type %s to the Squirrel stack. Use wrap_variant to pass an opaque object to Squirrel.", p_value.operator godot::Object *()->get_class()));
+		Object *object = p_value;
+		if (!object) {
+			sq_pushnull(vm);
+			return true;
+		}
+
+		Ref<SquirrelVariant> sqvar = Object::cast_to<SquirrelVariant>(object);
+		ERR_FAIL_COND_V_MSG(sqvar.is_null(), false, vformat("Cannot push object of type %s to the Squirrel stack. Use wrap_variant to pass an opaque object to Squirrel.", object->get_class()));
 		ERR_FAIL_COND_V(!sqvar->is_owned_by(this), false);
 
 		DEV_ASSERT(!sq_isnull(sqvar->_internal->obj));
