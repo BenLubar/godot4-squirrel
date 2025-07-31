@@ -163,6 +163,12 @@
 				Removes [param count] items from the top of the stack.
 			</description>
 		</method>
+		<method name="print_call_stack">
+			<return type="void" />
+			<description>
+				Prints a call stack trace using [member SquirrelVM.error_func].
+			</description>
+		</method>
 		<method name="push_stack">
 			<return type="bool" />
 			<param index="0" name="value" type="Variant" />

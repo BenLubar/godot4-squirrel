@@ -209,6 +209,8 @@ public:
 	void set_const_table(const godot::Ref<SquirrelTable> &p_table);
 	godot::Ref<SquirrelTable> get_const_table() const;
 	godot::Ref<SquirrelTable> get_registry_table() const;
+
+	void print_call_stack();
 };
 VARIANT_ENUM_CAST(SquirrelVMBase::VMState);
 

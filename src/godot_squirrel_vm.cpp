@@ -253,6 +253,8 @@ void SquirrelVMBase::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_registry_table"), &SquirrelVMBase::get_registry_table);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "registry_table", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_registry_table");
+
+	ClassDB::bind_method(D_METHOD("print_call_stack"), &SquirrelVMBase::print_call_stack);
 }
 
 SquirrelVMBase::SquirrelVMBase(bool create) {
@@ -1106,6 +1108,12 @@ GET_TABLE(registry);
 
 #undef SET_TABLE
 #undef GET_TABLE
+
+void SquirrelVMBase::print_call_stack() {
+	GET_VM();
+
+	sqstd_printcallstack(vm);
+}
 
 void SquirrelVM::_bind_methods() {
 #ifndef SQUIRREL_NO_PRINT
