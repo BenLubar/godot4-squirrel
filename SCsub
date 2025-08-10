@@ -13,6 +13,8 @@ env_squirrel.Append(CPPPATH=["squirrel/include/"])
 env_squirrel.Append(CPPDEFINES=["SQUSEDOUBLE"])
 env_squirrel.Append(CPPDEFINES=["_SQ64"])
 
+env_squirrel.Append(CPPDEFINES=["KEEP_SLOT_ORDER"])
+
 sources = [
 	"squirrel/squirrel/sqapi.cpp",
 	"squirrel/squirrel/sqbaselib.cpp",
