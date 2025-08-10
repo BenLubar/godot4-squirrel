@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SquirrelStackInfo" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="function" type="SquirrelAnyFunction" setter="" getter="get_function">
+		</member>
+		<member name="function_name" type="String" setter="" getter="get_function_name" default="&quot;&quot;">
+		</member>
+		<member name="line_number" type="int" setter="" getter="get_line_number" default="-1">
+		</member>
+		<member name="local_variable_names" type="PackedStringArray" setter="" getter="get_local_variable_names" default="PackedStringArray()">
+		</member>
+		<member name="local_variable_values" type="Array" setter="" getter="get_local_variable_values" default="[]">
+		</member>
+		<member name="source" type="String" setter="" getter="get_source" default="&quot;&quot;">
+		</member>
+	</members>
+</class>

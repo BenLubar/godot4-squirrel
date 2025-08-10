@@ -13,23 +13,13 @@
 
 using namespace godot;
 
-#ifndef SQUIRREL_NO_IMPORTER
-static void _create_squirrel_editor_plugin() {
-	SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
-	ERR_FAIL_NULL(tree);
-	tree->get_root()->add_child(memnew(SquirrelEditorPlugin));
-}
-#endif
-
 void initialize_squirrel_module(ModuleInitializationLevel p_level) {
 #ifndef SQUIRREL_NO_IMPORTER
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
 		GDREGISTER_INTERNAL_CLASS(SquirrelEditorImportPlugin);
 		GDREGISTER_INTERNAL_CLASS(SquirrelEditorPlugin);
 
-		if (Engine::get_singleton()->is_editor_hint()) {
-			callable_mp_static(_create_squirrel_editor_plugin).call_deferred();
-		}
+		EditorPlugins::add_by_type<SquirrelEditorPlugin>();
 
 		return;
 	}
@@ -42,6 +32,7 @@ void initialize_squirrel_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(SquirrelScript);
 
 	GDREGISTER_ABSTRACT_CLASS(SquirrelVariant);
+	GDREGISTER_CLASS(SquirrelStackInfo);
 	GDREGISTER_ABSTRACT_CLASS(SquirrelVMBase);
 	GDREGISTER_CLASS(SquirrelVM);
 
@@ -67,6 +58,14 @@ void initialize_squirrel_module(ModuleInitializationLevel p_level) {
 }
 
 void uninitialize_squirrel_module(ModuleInitializationLevel p_level) {
+#ifndef SQUIRREL_NO_IMPORTER
+	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+		EditorPlugins::remove_by_type<SquirrelEditorPlugin>();
+
+		return;
+	}
+#endif
+
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}

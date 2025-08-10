@@ -19,6 +19,14 @@
 			<description>
 			</description>
 		</method>
+		<method name="apply_function_catch">
+			<return type="Variant" />
+			<param index="0" name="func" type="SquirrelCallable" />
+			<param index="1" name="this" type="Variant" />
+			<param index="2" name="args" type="Array" />
+			<description>
+			</description>
+		</method>
 		<method name="call_function" qualifiers="const vararg">
 			<return type="Variant" />
 			<param index="0" name="func" type="SquirrelCallable" />
@@ -88,6 +96,12 @@
 			<param index="0" name="index" type="int" />
 			<description>
 				Retrieves a value from the Squirrel execution stack. Positive integers count up from the bottom of the stack, and negative numbers count down from the top of the stack. 0 is not a valid stack index.
+			</description>
+		</method>
+		<method name="get_stack_info" qualifiers="const">
+			<return type="SquirrelStackInfo" />
+			<param index="0" name="level" type="int" />
+			<description>
 			</description>
 		</method>
 		<method name="get_stack_top" qualifiers="const">

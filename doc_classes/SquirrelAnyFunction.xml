@@ -8,4 +8,17 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="bind_env" qualifiers="const">
+			<return type="SquirrelAnyFunction" />
+			<param index="0" name="env" type="SquirrelVariant" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="name" type="String" setter="" getter="get_name">
+			Returns the function name as defined in the script.
+		</member>
+	</members>
 </class>

@@ -196,6 +196,28 @@ void SquirrelVariant::SquirrelVariantInternal::init(const Ref<SquirrelVM> &vm, S
 	sq_addref(vm->_vm_internal->vm, &obj);
 }
 
+void SquirrelStackInfo::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_source"), &SquirrelStackInfo::get_source);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "source", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), StringName(), "get_source");
+	ClassDB::bind_method(D_METHOD("get_function_name"), &SquirrelStackInfo::get_function_name);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "function_name", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), StringName(), "get_function_name");
+	ClassDB::bind_method(D_METHOD("get_line_number"), &SquirrelStackInfo::get_line_number);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "line_number", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), StringName(), "get_line_number");
+	ClassDB::bind_method(D_METHOD("get_function"), &SquirrelStackInfo::get_function);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "function", PROPERTY_HINT_RESOURCE_TYPE, SquirrelAnyFunction::get_class_static(), PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), StringName(), "get_function");
+	ClassDB::bind_method(D_METHOD("get_local_variable_names"), &SquirrelStackInfo::get_local_variable_names);
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "local_variable_names", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), StringName(), "get_local_variable_names");
+	ClassDB::bind_method(D_METHOD("get_local_variable_values"), &SquirrelStackInfo::get_local_variable_values);
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "local_variable_values", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), StringName(), "get_local_variable_values");
+}
+
+String SquirrelStackInfo::get_source() const { return _source; }
+String SquirrelStackInfo::get_function_name() const { return _function_name; }
+int64_t SquirrelStackInfo::get_line_number() const { return _line_number; }
+Ref<SquirrelAnyFunction> SquirrelStackInfo::get_function() const { return _function; }
+PackedStringArray SquirrelStackInfo::get_local_variable_names() const { return _local_variable_names; }
+Array SquirrelStackInfo::get_local_variable_values() const { return _local_variable_values; }
+
 void SquirrelVMBase::_bind_methods() {
 	BIND_ENUM_CONSTANT(IDLE);
 	static_assert(IDLE == SQ_VMSTATE_IDLE);
@@ -211,6 +233,7 @@ void SquirrelVMBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("import_string"), &SquirrelVMBase::import_string);
 	ClassDB::bind_vararg_method(METHOD_FLAG_VARARG, "call_function", &SquirrelVMBase::call_function, MethodInfo("call_function", PropertyInfo(Variant::OBJECT, "func", PROPERTY_HINT_RESOURCE_TYPE, SquirrelCallable::get_class_static()), PropertyInfo(Variant::NIL, "this", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_NIL_IS_VARIANT)));
 	ClassDB::bind_method(D_METHOD("apply_function", "func", "this", "args"), &SquirrelVMBase::apply_function);
+	ClassDB::bind_method(D_METHOD("apply_function_catch", "func", "this", "args"), &SquirrelVMBase::apply_function_catch);
 	ClassDB::bind_method(D_METHOD("resume_generator", "generator"), &SquirrelVMBase::resume_generator);
 
 	ClassDB::bind_method(D_METHOD("get_stack", "index"), &SquirrelVMBase::get_stack);
@@ -254,6 +277,7 @@ void SquirrelVMBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_registry_table"), &SquirrelVMBase::get_registry_table);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "registry_table", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_registry_table");
 
+	ClassDB::bind_method(D_METHOD("get_stack_info", "level"), &SquirrelVMBase::get_stack_info);
 	ClassDB::bind_method(D_METHOD("print_call_stack"), &SquirrelVMBase::print_call_stack);
 }
 
@@ -477,30 +501,39 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 }
 
 Variant SquirrelVMBase::apply_function(const Ref<SquirrelCallable> &p_func, const Variant &p_this, const Array &p_args) {
-	ERR_FAIL_COND_V(p_func.is_null(), Variant());
-	ERR_FAIL_COND_V(!p_func->is_owned_by(this), Variant());
+	const Variant ret = apply_function_catch(p_func, p_this, p_args);
 
-	GET_VM(Variant());
+	const Ref<SquirrelThrow> error = ret;
+	ERR_FAIL_COND_V_MSG(error.is_valid(), Variant(), error->get_exception().stringify());
+
+	return ret;
+}
+
+Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func, const Variant &p_this, const Array &p_args) {
+	ERR_FAIL_COND_V(p_func.is_null(), SquirrelThrow::make("func is null"));
+	ERR_FAIL_COND_V(!p_func->is_owned_by(this), SquirrelThrow::make("func is not owned by this VM"));
+
+	GET_VM(SquirrelThrow::make("could not get VM"));
 	GET_OUTER_VM();
 
 	sq_pushobject(vm, p_func->_internal->obj);
 	if (unlikely(!push_stack(p_this))) {
 		sq_poptop(vm);
 		outer_vm->_vm_internal->clean_memoized_variants();
-		ERR_FAIL_V(Variant());
+		ERR_FAIL_V(SquirrelThrow::make("could not push arguments to stack"));
 	}
 	for (int64_t i = 0; i < p_args.size(); i++) {
 		if (unlikely(!push_stack(p_args[i]))) {
 			sq_pop(vm, i + 2);
 			outer_vm->_vm_internal->clean_memoized_variants();
-			ERR_FAIL_V(Variant());
+			ERR_FAIL_V(SquirrelThrow::make("could not push arguments to stack"));
 		}
 	}
 
 	if (unlikely(SQ_FAILED(sq_call(vm, p_args.size() + 1, SQTrue, SQTrue)))) {
 		sq_poptop(vm);
 		outer_vm->_vm_internal->clean_memoized_variants();
-		ERR_FAIL_V_MSG(Variant(), get_last_error().stringify());
+		ERR_FAIL_V_MSG(SquirrelThrow::make(get_last_error()), get_last_error().stringify());
 	}
 
 	const Variant result = get_stack(-1);
@@ -1108,6 +1141,40 @@ GET_TABLE(registry);
 
 #undef SET_TABLE
 #undef GET_TABLE
+
+Ref<SquirrelStackInfo> SquirrelVMBase::get_stack_info(int64_t p_level) const {
+	GET_VM(Ref<SquirrelStackInfo>());
+
+	SQStackInfos si;
+	if (unlikely(SQ_FAILED(sq_stackinfos(vm, p_level, &si)))) {
+		return Ref<SquirrelStackInfo>();
+	}
+
+	Ref<SquirrelStackInfo> stack_info;
+	stack_info.instantiate();
+
+	if (si.source) {
+		stack_info->_source = si.source;
+	}
+	if (si.funcname) {
+		stack_info->_function_name = si.funcname;
+	}
+	stack_info->_line_number = si.line;
+
+	godot_squirrel_push_call_closure(vm, p_level);
+	stack_info->_function = get_stack(-1);
+	sq_poptop(vm);
+
+	int64_t i = 0;
+	while (const SQChar *name = sq_getlocal(vm, p_level, i)) {
+		stack_info->_local_variable_names.append(name);
+		stack_info->_local_variable_values.append(get_stack(-1));
+		sq_poptop(vm);
+		i++;
+	}
+
+	return stack_info;
+}
 
 void SquirrelVMBase::print_call_stack() {
 	GET_VM();
@@ -1784,13 +1851,98 @@ void SquirrelCallable::_bind_methods() {
 }
 
 void SquirrelAnyFunction::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_name"), &SquirrelAnyFunction::get_name);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_READ_ONLY), StringName(), "get_name");
+
+	ClassDB::bind_method(D_METHOD("bind_env", "env"), &SquirrelAnyFunction::bind_env);
+}
+
+String SquirrelAnyFunction::get_name() const {
+	ERR_FAIL_COND_V(_vm.is_null(), String());
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+
+	if (unlikely(SQ_FAILED(sq_getclosurename(_vm->_vm_internal->vm, -1)))) {
+		sq_poptop(_vm->_vm_internal->vm);
+		ERR_FAIL_V_MSG(String(), "the target is not a closure");
+	}
+
+	const String name = _vm->get_stack(-1);
+	sq_pop(_vm->_vm_internal->vm, 2);
+
+	return name;
+}
+
+Ref<SquirrelAnyFunction> SquirrelAnyFunction::bind_env(const Ref<SquirrelVariant> &p_env) const {
+	ERR_FAIL_COND_V(_vm.is_null(), Ref<SquirrelAnyFunction>());
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!_vm->push_stack(p_env))) {
+		sq_poptop(_vm->_vm_internal->vm);
+		return Ref<SquirrelAnyFunction>(); // push_stack already wrote an error message
+	}
+
+	if (unlikely(SQ_FAILED(sq_bindenv(_vm->_vm_internal->vm, -2)))) {
+		sq_pop(_vm->_vm_internal->vm, 2);
+		ERR_FAIL_V_MSG(Ref<SquirrelAnyFunction>(), _vm->get_last_error().stringify());
+	}
+
+	const Ref<SquirrelAnyFunction> bound = _vm->get_stack(-1);
+	sq_pop(_vm->_vm_internal->vm, 2);
+
+	return bound;
 }
 
 void SquirrelFunction::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_root_table", "root_table"), &SquirrelFunction::set_root_table);
+	ClassDB::bind_method(D_METHOD("get_root_table"), &SquirrelFunction::get_root_table);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "root_table", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_NONE), "set_root_table", "get_root_table");
+}
+
+void SquirrelFunction::set_root_table(const Ref<SquirrelTable> &p_root_table) {
+	ERR_FAIL_COND(_vm.is_null());
+	ERR_FAIL_COND(p_root_table.is_null());
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!_vm->push_stack(p_root_table))) {
+		sq_poptop(_vm->_vm_internal->vm);
+		return;
+	}
+
+	if (unlikely(SQ_FAILED(sq_setclosureroot(_vm->_vm_internal->vm, -2)))) {
+		sq_pop(_vm->_vm_internal->vm, 2);
+		ERR_FAIL_MSG(_vm->get_last_error().stringify());
+	}
+
+	sq_poptop(_vm->_vm_internal->vm);
+}
+
+Ref<SquirrelTable> SquirrelFunction::get_root_table() const {
+	ERR_FAIL_COND_V(_vm.is_null(), Ref<SquirrelTable>());
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(SQ_FAILED(sq_getclosureroot(_vm->_vm_internal->vm, -1)))) {
+		sq_poptop(_vm->_vm_internal->vm);
+		ERR_FAIL_V_MSG(Ref<SquirrelTable>(), _vm->get_last_error().stringify());
+	}
+
+	const Ref<SquirrelTable> root = _vm->get_stack(-1);
+	sq_pop(_vm->_vm_internal->vm, 2);
+
+	return root;
 }
 
 void SquirrelNativeFunction::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_name", "name"), &SquirrelNativeFunction::set_name);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_NONE), "set_name", "get_name");
+
 	ClassDB::bind_method(D_METHOD("set_params_check", "num_args", "type_mask"), &SquirrelNativeFunction::set_params_check, DEFVAL(String()));
+}
+
+void SquirrelNativeFunction::set_name(const String &p_name) {
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	sq_setnativeclosurename(_vm->_vm_internal->vm, -1, p_name.utf8());
+	sq_poptop(_vm->_vm_internal->vm);
 }
 
 bool SquirrelNativeFunction::set_params_check(int64_t p_num_args, const String &p_type_mask) {
@@ -2005,12 +2157,8 @@ Ref<SquirrelSuspend> SquirrelSuspend::make(const Variant &p_result) {
 // TODO:
 //
 // DEBUG
-// SQUIRREL_API SQRESULT sq_stackinfos(HSQUIRRELVM v,SQInteger level,SQStackInfos *si);
-// SQUIRREL_API const SQChar *sq_getlocal(HSQUIRRELVM v,SQUnsignedInteger level,SQUnsignedInteger idx);
-// SQUIRREL_API SQRESULT sq_getcallee(HSQUIRRELVM v);
 // SQUIRREL_API const SQChar *sq_getfreevariable(HSQUIRRELVM v,SQInteger idx,SQUnsignedInteger nval);
 // SQUIRREL_API SQRESULT sq_setfreevariable(HSQUIRRELVM v,SQInteger idx,SQUnsignedInteger nval);
-// SQUIRREL_API SQRESULT sq_getfunctioninfo(HSQUIRRELVM v,SQInteger level,SQFunctionInfo *fi);
 // SQUIRREL_API SQRESULT sq_getclosureinfo(HSQUIRRELVM v,SQInteger idx,SQInteger *nparams,SQInteger *nfreevars);
 //
 // CLASS/INSTANCE
@@ -2024,8 +2172,3 @@ Ref<SquirrelSuspend> SquirrelSuspend::make(const Variant &p_result) {
 // SQUIRREL_API SQRESULT sq_setattributes(HSQUIRRELVM v,SQInteger idx);
 // SQUIRREL_API SQRESULT sq_getattributes(HSQUIRRELVM v,SQInteger idx);
 // SQUIRREL_API SQRESULT sq_getclass(HSQUIRRELVM v,SQInteger idx);
-//
-// FUNC/CLOSURE
-// SQUIRREL_API SQRESULT sq_bindenv(HSQUIRRELVM v,SQInteger idx);
-// SQUIRREL_API SQRESULT sq_setclosureroot(HSQUIRRELVM v,SQInteger idx);
-// SQUIRREL_API SQRESULT sq_getclosureroot(HSQUIRRELVM v,SQInteger idx);

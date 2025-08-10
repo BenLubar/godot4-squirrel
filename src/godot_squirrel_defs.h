@@ -133,6 +133,31 @@ public:
 	godot::String _to_string() const;
 };
 
+class SquirrelStackInfo : public godot::RefCounted {
+	GDCLASS(SquirrelStackInfo, godot::RefCounted);
+
+protected:
+	static void _bind_methods();
+
+private:
+	godot::String _source;
+	godot::String _function_name;
+	int64_t _line_number = -1;
+	godot::Ref<SquirrelAnyFunction> _function;
+	godot::PackedStringArray _local_variable_names;
+	godot::Array _local_variable_values;
+
+	friend class SquirrelVMBase;
+
+public:
+	godot::String get_source() const;
+	godot::String get_function_name() const;
+	int64_t get_line_number() const;
+	godot::Ref<SquirrelAnyFunction> get_function() const;
+	godot::PackedStringArray get_local_variable_names() const;
+	godot::Array get_local_variable_values() const;
+};
+
 class SquirrelVMBase : public SquirrelVariant {
 	GDCLASS(SquirrelVMBase, SquirrelVariant);
 
@@ -146,6 +171,8 @@ protected:
 	friend class SquirrelTable;
 	friend class SquirrelArray;
 	friend class SquirrelUserData;
+	friend class SquirrelAnyFunction;
+	friend class SquirrelFunction;
 	friend class SquirrelNativeFunction;
 	friend class SquirrelClass;
 	friend class SquirrelInstance;
@@ -171,6 +198,7 @@ public:
 	void import_string();
 	godot::Variant call_function(const godot::Variant **p_args, GDExtensionInt p_arg_count, GDExtensionCallError &r_error);
 	godot::Variant apply_function(const godot::Ref<SquirrelCallable> &p_func, const godot::Variant &p_this, const godot::Array &p_args);
+	godot::Variant apply_function_catch(const godot::Ref<SquirrelCallable> &p_func, const godot::Variant &p_this, const godot::Array &p_args);
 	godot::Variant resume_generator(const godot::Ref<SquirrelGenerator> &p_generator);
 
 	godot::Variant get_stack(int64_t p_index) const;
@@ -210,6 +238,7 @@ public:
 	godot::Ref<SquirrelTable> get_const_table() const;
 	godot::Ref<SquirrelTable> get_registry_table() const;
 
+	godot::Ref<SquirrelStackInfo> get_stack_info(int64_t p_level) const;
 	void print_call_stack();
 };
 VARIANT_ENUM_CAST(SquirrelVMBase::VMState);
@@ -327,6 +356,10 @@ class SquirrelAnyFunction : public SquirrelCallable {
 
 protected:
 	static void _bind_methods();
+
+public:
+	godot::String get_name() const;
+	godot::Ref<SquirrelAnyFunction> bind_env(const godot::Ref<SquirrelVariant> &p_env) const;
 };
 
 class SquirrelFunction : public SquirrelAnyFunction {
@@ -334,6 +367,10 @@ class SquirrelFunction : public SquirrelAnyFunction {
 
 protected:
 	static void _bind_methods();
+
+public:
+	void set_root_table(const godot::Ref<SquirrelTable> &p_table);
+	godot::Ref<SquirrelTable> get_root_table() const;
 };
 
 class SquirrelNativeFunction : public SquirrelAnyFunction {
@@ -343,6 +380,7 @@ protected:
 	static void _bind_methods();
 
 public:
+	void set_name(const godot::String &p_name);
 	bool set_params_check(int64_t p_num_args, const godot::String &p_type_mask);
 };
 

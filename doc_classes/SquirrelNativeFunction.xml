@@ -44,4 +44,9 @@
 			</description>
 		</method>
 	</methods>
+	<members>
+		<member name="name" type="String" setter="set_name" getter="get_name">
+			The function name. Defaults to the method name of the [Callable] used to create this [SquirrelNativeFunction].
+		</member>
+	</members>
 </class>
