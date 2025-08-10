@@ -533,7 +533,7 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 	if (unlikely(SQ_FAILED(sq_call(vm, p_args.size() + 1, SQTrue, SQTrue)))) {
 		sq_poptop(vm);
 		outer_vm->_vm_internal->clean_memoized_variants();
-		ERR_FAIL_V_MSG(SquirrelThrow::make(get_last_error()), get_last_error().stringify());
+		return SquirrelThrow::make(get_last_error());
 	}
 
 	const Variant result = get_stack(-1);
