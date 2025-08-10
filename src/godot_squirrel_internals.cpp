@@ -28,7 +28,7 @@ SQInteger godot_squirrel_get_generator_state(const HSQOBJECT *obj) {
 	}
 }
 
-void godot_squirrel_push_call_closure(HSQUIRRELVM vm, int64_t level) {
+void godot_squirrel_push_call_closure(HSQUIRRELVM vm, SQInteger level) {
 	const SQVM::CallInfo &ci = vm->_callsstack[vm->_callsstacksize - level - 1];
 	sq_pushobject(vm, ci._closure);
 }
