@@ -6,6 +6,13 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="get_outer_values" qualifiers="const">
+			<return type="Array" />
+			<description>
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="root_table" type="SquirrelTable" setter="set_root_table" getter="get_root_table">
 		</member>

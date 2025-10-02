@@ -1897,6 +1897,8 @@ void SquirrelFunction::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_root_table", "root_table"), &SquirrelFunction::set_root_table);
 	ClassDB::bind_method(D_METHOD("get_root_table"), &SquirrelFunction::get_root_table);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "root_table", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_NONE), "set_root_table", "get_root_table");
+
+	ClassDB::bind_method(D_METHOD("get_outer_values"), &SquirrelFunction::get_outer_values);
 }
 
 void SquirrelFunction::set_root_table(const Ref<SquirrelTable> &p_root_table) {
@@ -1930,6 +1932,31 @@ Ref<SquirrelTable> SquirrelFunction::get_root_table() const {
 	sq_pop(_vm->_vm_internal->vm, 2);
 
 	return root;
+}
+
+Array SquirrelFunction::get_outer_values() const {
+	ERR_FAIL_COND_V(_vm.is_null(), Array());
+
+	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	SQInteger nparams = 0, nfreevars = 0;
+	if (unlikely(SQ_FAILED(sq_getclosureinfo(_vm->_vm_internal->vm, -1, &nparams, &nfreevars)))) {
+		sq_poptop(_vm->_vm_internal->vm);
+		ERR_FAIL_V_MSG(Array(), _vm->get_last_error().stringify());
+	}
+
+	Array array;
+	array.resize(nfreevars);
+
+	for (SQInteger i = 0; i < nfreevars; i++) {
+		if (likely(sq_getfreevariable(_vm->_vm_internal->vm, -1, i))) {
+			array[i] = _vm->get_stack(-1);
+			sq_poptop(_vm->_vm_internal->vm);
+		}
+	}
+
+	sq_poptop(_vm->_vm_internal->vm);
+
+	return array;
 }
 
 void SquirrelNativeFunction::_bind_methods() {

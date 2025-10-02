@@ -371,6 +371,7 @@ protected:
 public:
 	void set_root_table(const godot::Ref<SquirrelTable> &p_table);
 	godot::Ref<SquirrelTable> get_root_table() const;
+	godot::Array get_outer_values() const;
 };
 
 class SquirrelNativeFunction : public SquirrelAnyFunction {
