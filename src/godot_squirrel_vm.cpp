@@ -477,14 +477,12 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 			r_error.error = GDEXTENSION_CALL_ERROR_INVALID_ARGUMENT;
 			r_error.argument = arg;
 			r_error.expected = GDEXTENSION_VARIANT_TYPE_OBJECT;
-			outer_vm->_vm_internal->clean_memoized_variants();
 			ERR_FAIL_V(Variant());
 		}
 	}
 
 	if (unlikely(SQ_FAILED(sq_call(vm, p_arg_count - 1, SQTrue, SQTrue)))) {
 		sq_poptop(vm);
-		outer_vm->_vm_internal->clean_memoized_variants();
 		ERR_FAIL_V(Variant());
 	}
 
@@ -494,8 +492,6 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
 		sq_poptop(vm);
 	}
-
-	outer_vm->_vm_internal->clean_memoized_variants();
 
 	return result;
 }
@@ -519,20 +515,17 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 	sq_pushobject(vm, p_func->_internal->obj);
 	if (unlikely(!push_stack(p_this))) {
 		sq_poptop(vm);
-		outer_vm->_vm_internal->clean_memoized_variants();
 		ERR_FAIL_V(SquirrelThrow::make("could not push arguments to stack"));
 	}
 	for (int64_t i = 0; i < p_args.size(); i++) {
 		if (unlikely(!push_stack(p_args[i]))) {
 			sq_pop(vm, i + 2);
-			outer_vm->_vm_internal->clean_memoized_variants();
 			ERR_FAIL_V(SquirrelThrow::make("could not push arguments to stack"));
 		}
 	}
 
 	if (unlikely(SQ_FAILED(sq_call(vm, p_args.size() + 1, SQTrue, SQTrue)))) {
 		sq_poptop(vm);
-		outer_vm->_vm_internal->clean_memoized_variants();
 		return SquirrelThrow::make(get_last_error());
 	}
 
@@ -542,8 +535,6 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
 		sq_poptop(vm);
 	}
-
-	outer_vm->_vm_internal->clean_memoized_variants();
 
 	return result;
 }
@@ -1044,6 +1035,9 @@ Variant SquirrelVMBase::convert_variant(const Variant &p_value, bool p_wrap_unha
 
 int64_t SquirrelVMBase::collect_garbage() {
 	GET_VM(-1);
+	GET_OUTER_VM();
+
+	outer_vm->_vm_internal->clean_memoized_variants();
 
 	return sq_collectgarbage(vm);
 }
