@@ -1180,6 +1180,12 @@ void SquirrelVMBase::print_call_stack() {
 	sqstd_printcallstack(vm);
 }
 
+HSQUIRRELVM SquirrelVMBase::get_native_vm() const {
+	GET_VM(nullptr);
+
+	return vm;
+}
+
 void SquirrelVM::_bind_methods() {
 #ifndef SQUIRREL_NO_PRINT
 	ClassDB::bind_method(D_METHOD("set_print_func", "print_func"), &SquirrelVM::set_print_func);

@@ -106,6 +106,8 @@ class SquirrelInstance;
 class SquirrelWeakRef;
 class SquirrelIterator;
 
+typedef struct SQVM *HSQUIRRELVM;
+
 class SquirrelVariant : public godot::RefCounted {
 	GDCLASS(SquirrelVariant, godot::RefCounted);
 
@@ -240,6 +242,8 @@ public:
 
 	godot::Ref<SquirrelStackInfo> get_stack_info(int64_t p_level) const;
 	void print_call_stack();
+
+	HSQUIRRELVM get_native_vm() const;
 };
 VARIANT_ENUM_CAST(SquirrelVMBase::VMState);
 
