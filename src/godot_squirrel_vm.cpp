@@ -837,8 +837,6 @@ Ref<SquirrelUserData> SquirrelVMBase::intern_variant(const Variant &p_value) {
 		}
 	}
 
-	outer_vm->_vm_internal->clean_memoized_variants();
-
 	const Ref<SquirrelUserData> wrapped = wrap_variant(p_value);
 	outer_vm->_vm_internal->memoized_variants[p_value] = wrapped->weak_ref();
 
