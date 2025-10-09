@@ -106,7 +106,13 @@ class SquirrelInstance;
 class SquirrelWeakRef;
 class SquirrelIterator;
 
+#ifdef _MSC_VER
+typedef __int64 SQInteger;
+#else
+typedef long long SQInteger;
+#endif
 typedef struct SQVM *HSQUIRRELVM;
+typedef SQInteger (*SQFUNCTION)(HSQUIRRELVM);
 
 class SquirrelVariant : public godot::RefCounted {
 	GDCLASS(SquirrelVariant, godot::RefCounted);
@@ -222,6 +228,7 @@ public:
 	godot::Ref<SquirrelUserData> wrap_variant(const godot::Variant &p_value);
 	godot::Ref<SquirrelUserData> intern_variant(const godot::Variant &p_value);
 	godot::Ref<SquirrelNativeFunction> wrap_callable(const godot::Callable &p_callable, bool p_varargs);
+	godot::Ref<SquirrelNativeFunction> create_raw_native_function(SQFUNCTION p_func);
 	godot::Variant _convert_variant_helper(const godot::Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed);
 	godot::Variant convert_variant(const godot::Variant &p_value, bool p_wrap_unhandled_values);
 
@@ -244,6 +251,7 @@ public:
 	void print_call_stack();
 
 	HSQUIRRELVM get_native_vm() const;
+	static godot::Ref<SquirrelVMBase> from_native_vm(HSQUIRRELVM p_vm);
 };
 VARIANT_ENUM_CAST(SquirrelVMBase::VMState);
 
@@ -291,6 +299,8 @@ public:
 	godot::Ref<SquirrelTable> get_weak_ref_default_delegate() const;
 
 	godot::String _to_string() const;
+
+	godot::Ref<SquirrelVMBase> _from_native_vm(HSQUIRRELVM p_vm);
 };
 
 class SquirrelTable : public SquirrelVariant {
@@ -346,6 +356,7 @@ public:
 
 	bool is_variant() const;
 	godot::Variant get_variant() const;
+	static bool get_native_variant(godot::Variant &r_variant, HSQUIRRELVM p_vm, int64_t p_stack_index);
 };
 
 class SquirrelCallable : public SquirrelVariant {

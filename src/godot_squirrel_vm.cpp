@@ -42,13 +42,14 @@ namespace {
 		}
 
 		// retrieves a Variant from the stack
-		static Variant get(HSQUIRRELVM vm, SQInteger index) {
+		static bool get(Variant &out, HSQUIRRELVM vm, SQInteger index) {
 			SQUserPointer pointer = nullptr, object_type_tag = nullptr;
-			ERR_FAIL_COND_V(SQ_FAILED(sq_getuserdata(vm, index, &pointer, &object_type_tag)), Variant());
-			ERR_FAIL_COND_V(object_type_tag != type_tag, Variant());
+			ERR_FAIL_COND_V(SQ_FAILED(sq_getuserdata(vm, index, &pointer, &object_type_tag)), false);
+			ERR_FAIL_COND_V(object_type_tag != type_tag, false);
 
 			const SquirrelVariantUserData *svud = reinterpret_cast<const SquirrelVariantUserData *>(pointer);
-			return svud->variant;
+			out = svud->variant;
+			return true;
 		}
 	};
 	const SQUserPointer SquirrelVariantUserData::type_tag = const_cast<SQUserPointer *>(&SquirrelVariantUserData::type_tag);
@@ -93,6 +94,9 @@ struct SquirrelVMBase::SquirrelVMInternal {
 		Ref<T> ref;
 		ref.instantiate();
 		ref->_internal->init(reinterpret_cast<SquirrelVM *>(sq_getsharedforeignptr(vm)), ref.ptr(), obj);
+
+		ref_objects[obj] = *ref;
+
 		return ref;
 	}
 
@@ -393,7 +397,9 @@ void SquirrelVMBase::import_blob() {
 
 #ifndef SQUIRREL_NO_RANDOMNUMBERGENERATOR
 static SQInteger squirrel_math_rand(HSQUIRRELVM vm) {
-	const Ref<RandomNumberGenerator> rng = SquirrelVariantUserData::get(vm, -1);
+	Variant rng_variant;
+	SquirrelVariantUserData::get(rng_variant, vm, -1);
+	const Ref<RandomNumberGenerator> rng = rng_variant;
 	CRASH_COND(rng.is_null());
 
 	sq_pushinteger(vm, rng->randi());
@@ -402,7 +408,9 @@ static SQInteger squirrel_math_rand(HSQUIRRELVM vm) {
 }
 
 static SQInteger squirrel_math_srand(HSQUIRRELVM vm) {
-	const Ref<RandomNumberGenerator> rng = SquirrelVariantUserData::get(vm, -1);
+	Variant rng_variant;
+	SquirrelVariantUserData::get(rng_variant, vm, -1);
+	const Ref<RandomNumberGenerator> rng = rng_variant;
 	CRASH_COND(rng.is_null());
 
 	SQInteger seed = 0;
@@ -836,20 +844,13 @@ Ref<SquirrelUserData> SquirrelVMBase::intern_variant(const Variant &p_value) {
 
 SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRELVM vm) {
 	Ref<SquirrelVM> outer_vm = reinterpret_cast<SquirrelVM *>(sq_getsharedforeignptr(vm));
-	Ref<SquirrelVMBase> vm_base;
-	if (outer_vm->_vm_internal->vm == vm) {
-		vm_base = outer_vm;
-	} else {
-		// do some juggling to get a SquirrelVMBase that points to the correct thread
-		sq_pushthread(outer_vm->_vm_internal->vm, vm);
-		vm_base = outer_vm->get_stack(-1);
-		DEV_ASSERT(Ref<SquirrelThread>(vm_base).is_valid());
-		sq_poptop(outer_vm->_vm_internal->vm);
-	}
+	Ref<SquirrelVMBase> vm_base = outer_vm->_from_native_vm(vm);
 
 	SQBool varargs = SQFalse;
 	ERR_FAIL_COND_V(SQ_FAILED(sq_getbool(vm, -2, &varargs)), sq_throwerror(vm, "wrapped callable free variables invalid"));
-	Callable func = SquirrelVariantUserData::get(vm, -1);
+	Variant wrapped_func;
+	ERR_FAIL_COND_V(!SquirrelVariantUserData::get(wrapped_func, vm, -1), sq_throwerror(vm, "wrapped callable is invalid"));
+	const Callable func = wrapped_func;
 	ERR_FAIL_COND_V(!func.is_valid(), sq_throwerror(vm, "wrapped callable is invalid"));
 
 	const int64_t nargs = sq_gettop(vm) - 2;
@@ -923,6 +924,19 @@ Ref<SquirrelNativeFunction> SquirrelVMBase::wrap_callable(const Callable &p_call
 	sq_pushbool(vm, p_varargs ? SQTrue : SQFalse);
 	sq_newclosure(vm, &SquirrelVMInternal::squirrel_callable_wrapper, 2);
 	sq_setnativeclosurename(vm, -1, String(p_callable.get_method()).utf8());
+
+	const Ref<SquirrelNativeFunction> nf = get_stack(-1);
+	DEV_ASSERT(nf.is_valid());
+
+	sq_poptop(vm);
+
+	return nf;
+}
+
+Ref<SquirrelNativeFunction> SquirrelVMBase::create_raw_native_function(SQFUNCTION p_func) {
+	GET_VM(Ref<SquirrelNativeFunction>());
+
+	sq_newclosure(vm, p_func, 0);
 
 	const Ref<SquirrelNativeFunction> nf = get_stack(-1);
 	DEV_ASSERT(nf.is_valid());
@@ -1180,6 +1194,12 @@ HSQUIRRELVM SquirrelVMBase::get_native_vm() const {
 	return vm;
 }
 
+Ref<SquirrelVMBase> SquirrelVMBase::from_native_vm(HSQUIRRELVM p_vm) {
+	const Ref<SquirrelVM> outer_vm = reinterpret_cast<SquirrelVM *>(sq_getsharedforeignptr(p_vm));
+
+	return outer_vm->_from_native_vm(p_vm);
+}
+
 void SquirrelVM::_bind_methods() {
 #ifndef SQUIRREL_NO_PRINT
 	ClassDB::bind_method(D_METHOD("set_print_func", "print_func"), &SquirrelVM::set_print_func);
@@ -1317,6 +1337,20 @@ Ref<SquirrelTable> SquirrelVM::get_weak_ref_default_delegate() const {
 
 String SquirrelVM::_to_string() const {
 	return vformat("<%s:%d>", get_class(), get_instance_id());
+}
+
+Ref<SquirrelVMBase> SquirrelVM::_from_native_vm(HSQUIRRELVM p_vm) {
+	if (_vm_internal->vm == p_vm) {
+		return this;
+	}
+
+	// do some juggling to get a SquirrelVMBase that points to the correct thread
+	sq_pushthread(_vm_internal->vm, p_vm);
+	const Ref<SquirrelThread> thread = get_stack(-1);
+	DEV_ASSERT(thread.is_valid());
+	sq_poptop(_vm_internal->vm);
+
+	return thread;
 }
 
 void SquirrelVariant::_bind_methods() {
@@ -1839,10 +1873,15 @@ Variant SquirrelUserData::get_variant() const {
 	ERR_FAIL_COND_V(_vm.is_null(), Variant());
 
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	const Variant value = SquirrelVariantUserData::get(_vm->_vm_internal->vm, -1);
+	Variant value;
+	(void)SquirrelVariantUserData::get(value, _vm->_vm_internal->vm, -1);
 	sq_poptop(_vm->_vm_internal->vm);
 
 	return value;
+}
+
+bool SquirrelUserData::get_native_variant(godot::Variant &r_variant, HSQUIRRELVM p_vm, int64_t p_stack_index) {
+	return SquirrelVariantUserData::get(r_variant, p_vm, p_stack_index);
 }
 
 void SquirrelCallable::_bind_methods() {
