@@ -40,8 +40,6 @@ String SquirrelScript::get_source() const {
 	return _source;
 }
 void SquirrelScript::set_source(const String &p_source) {
-	ERR_FAIL_COND_MSG(p_source.contains(String::chr(0)), "Squirrel source code cannot contain ASCII NUL characters.");
-
 	if (_source != p_source) {
 		_source = p_source;
 		emit_changed();
