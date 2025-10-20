@@ -11,7 +11,8 @@
 #include <sqstdblob.h>
 #include <sqstdmath.h>
 #include <sqstdstring.h>
-#include <stdarg.h>
+#include <cstdarg>
+#include <cstdio>
 
 #include "godot_squirrel_internals.h"
 
@@ -152,12 +153,12 @@ struct SquirrelVMBase::SquirrelVMInternal {
 	static String squirrel_vsprintf(const char *format, va_list args) {
 		va_list args_copy;
 		va_copy(args_copy, args);
-		size_t length = vsnprintf(0, 0, format, args_copy);
+		size_t length = std::vsnprintf(0, 0, format, args_copy);
 		va_end(args_copy);
 
 		PackedByteArray buffer;
 		buffer.resize(length + 1);
-		vsnprintf(reinterpret_cast<char *>(buffer.ptrw()), length + 1, format, args);
+		std::vsnprintf(reinterpret_cast<char *>(buffer.ptrw()), length + 1, format, args);
 
 		buffer.resize(length);
 		return buffer.get_string_from_utf8();
