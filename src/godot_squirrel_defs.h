@@ -120,7 +120,7 @@ class SquirrelVariant : public godot::RefCounted {
 protected:
 	static void _bind_methods();
 
-	godot::Ref<SquirrelVM> _vm;
+	SquirrelVM *_vm;
 
 	struct SquirrelVariantInternal;
 	friend struct SquirrelVariantInternal;

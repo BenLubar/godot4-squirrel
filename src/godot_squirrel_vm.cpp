@@ -195,7 +195,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 };
 
 void SquirrelVariant::SquirrelVariantInternal::init(const Ref<SquirrelVM> &vm, SquirrelVariant *outer, const HSQOBJECT &init_obj) {
-	outer->_vm = vm;
+	outer->_vm = *vm;
 	obj = init_obj;
 	sq_addref(vm->_vm_internal->vm, &obj);
 }
@@ -318,6 +318,8 @@ SquirrelVMBase::SquirrelVMBase(bool create) {
 
 SquirrelVMBase::~SquirrelVMBase() {
 	if (_vm_internal) {
+		_vm_internal->ref_objects.clear();
+		_vm_internal->memoized_variants.clear();
 		sq_close(_vm_internal->vm);
 		memdelete(_vm_internal);
 	}
@@ -1361,11 +1363,12 @@ void SquirrelVariant::_bind_methods() {
 }
 
 SquirrelVariant::SquirrelVariant() {
+	_vm = nullptr;
 	_internal = memnew(SquirrelVariantInternal);
 }
 
 SquirrelVariant::~SquirrelVariant() {
-	if (_vm.is_valid()) {
+	if (_vm) {
 		DEV_ASSERT(_vm->_vm_internal);
 		_vm->_vm_internal->ref_objects.erase(_internal->obj);
 		sq_release(_vm->_vm_internal->vm, &_internal->obj);
@@ -1376,7 +1379,7 @@ SquirrelVariant::~SquirrelVariant() {
 bool SquirrelVariant::is_owned_by(const Ref<SquirrelVMBase> &p_vm_or_thread) const {
 	ERR_FAIL_COND_V(p_vm_or_thread.is_null(), false);
 
-	if (unlikely(_vm.is_null())) {
+	if (unlikely(!_vm)) {
 		const Ref<SquirrelVM> &this_vm = Ref<SquirrelVariant>(this);
 		ERR_FAIL_COND_V_MSG(this_vm.is_valid(), false, "\"im not owned! im not owned!!\", i continue to insist as i slowly shrink and transform into a SquirrelVM");
 		ERR_FAIL_V_MSG(false, "SquirrelVariant objects should not be created using .new()");
@@ -1420,7 +1423,7 @@ Ref<SquirrelWeakRef> SquirrelVariant::weak_ref() const {
 
 String SquirrelVariant::_to_string() const {
 	if (likely(!sq_isnull(_internal->obj))) {
-		DEV_ASSERT(_vm.is_valid());
+		DEV_ASSERT(_vm);
 
 		sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 		if (unlikely(SQ_FAILED(sq_tostring(_vm->_vm_internal->vm, -1)))) {
@@ -1870,7 +1873,7 @@ bool SquirrelUserData::is_variant() const {
 }
 
 Variant SquirrelUserData::get_variant() const {
-	ERR_FAIL_COND_V(_vm.is_null(), Variant());
+	ERR_FAIL_NULL_V(_vm, Variant());
 
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 	Variant value;
@@ -1895,7 +1898,7 @@ void SquirrelAnyFunction::_bind_methods() {
 }
 
 String SquirrelAnyFunction::get_name() const {
-	ERR_FAIL_COND_V(_vm.is_null(), String());
+	ERR_FAIL_NULL_V(_vm, String());
 
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 
@@ -1911,7 +1914,7 @@ String SquirrelAnyFunction::get_name() const {
 }
 
 Ref<SquirrelAnyFunction> SquirrelAnyFunction::bind_env(const Ref<SquirrelVariant> &p_env) const {
-	ERR_FAIL_COND_V(_vm.is_null(), Ref<SquirrelAnyFunction>());
+	ERR_FAIL_NULL_V(_vm, Ref<SquirrelAnyFunction>());
 
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 	if (unlikely(!_vm->push_stack(p_env))) {
@@ -1939,7 +1942,7 @@ void SquirrelFunction::_bind_methods() {
 }
 
 void SquirrelFunction::set_root_table(const Ref<SquirrelTable> &p_root_table) {
-	ERR_FAIL_COND(_vm.is_null());
+	ERR_FAIL_NULL(_vm);
 	ERR_FAIL_COND(p_root_table.is_null());
 
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
@@ -1957,7 +1960,7 @@ void SquirrelFunction::set_root_table(const Ref<SquirrelTable> &p_root_table) {
 }
 
 Ref<SquirrelTable> SquirrelFunction::get_root_table() const {
-	ERR_FAIL_COND_V(_vm.is_null(), Ref<SquirrelTable>());
+	ERR_FAIL_NULL_V(_vm, Ref<SquirrelTable>());
 
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 	if (unlikely(SQ_FAILED(sq_getclosureroot(_vm->_vm_internal->vm, -1)))) {
@@ -1972,7 +1975,7 @@ Ref<SquirrelTable> SquirrelFunction::get_root_table() const {
 }
 
 Array SquirrelFunction::get_outer_values() const {
-	ERR_FAIL_COND_V(_vm.is_null(), Array());
+	ERR_FAIL_NULL_V(_vm, Array());
 
 	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
 	SQInteger nparams = 0, nfreevars = 0;
