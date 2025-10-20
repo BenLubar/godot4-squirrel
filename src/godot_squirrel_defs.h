@@ -397,6 +397,7 @@ protected:
 
 public:
 	void set_name(const godot::String &p_name);
+	godot::String get_name() const;
 	bool set_params_check(int64_t p_num_args, const godot::String &p_type_mask);
 };
 

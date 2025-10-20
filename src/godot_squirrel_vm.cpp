@@ -2014,6 +2014,10 @@ void SquirrelNativeFunction::set_name(const String &p_name) {
 	sq_poptop(_vm->_vm_internal->vm);
 }
 
+String SquirrelNativeFunction::get_name() const {
+	return parent_type::get_name();
+}
+
 bool SquirrelNativeFunction::set_params_check(int64_t p_num_args, const String &p_type_mask) {
 	ERR_FAIL_COND_V(!sq_isnativeclosure(_internal->obj), false);
 
