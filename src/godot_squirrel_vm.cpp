@@ -2002,7 +2002,7 @@ Array SquirrelFunction::get_outer_values() const {
 
 void SquirrelNativeFunction::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_name", "name"), &SquirrelNativeFunction::set_name);
-	ClassDB::bind_method(D_METHOD("get_name"), &SquirrelAnyFunction::get_name);
+	ClassDB::bind_method(D_METHOD("get_name"), &SquirrelNativeFunction::get_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_NONE), "set_name", "get_name");
 
 	ClassDB::bind_method(D_METHOD("set_params_check", "num_args", "type_mask"), &SquirrelNativeFunction::set_params_check, DEFVAL(String()));
