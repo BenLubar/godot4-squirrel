@@ -196,7 +196,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 };
 
 void SquirrelVariant::SquirrelVariantInternal::init(const Ref<SquirrelVM> &vm, SquirrelVariant *outer, const HSQOBJECT &init_obj) {
-	outer->_vm = *vm;
+	outer->_vm = ObjectID(vm->get_instance_id());
 	obj = init_obj;
 	sq_addref(vm->_vm_internal->vm, &obj);
 }
@@ -1363,16 +1363,19 @@ void SquirrelVariant::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("weak_ref"), &SquirrelVariant::weak_ref);
 }
 
+SquirrelVM *SquirrelVariant::_get_vm() const {
+	return Object::cast_to<SquirrelVM>(ObjectDB::get_instance(_vm));
+}
+
 SquirrelVariant::SquirrelVariant() {
-	_vm = nullptr;
 	_internal = memnew(SquirrelVariantInternal);
 }
 
 SquirrelVariant::~SquirrelVariant() {
-	if (_vm) {
-		DEV_ASSERT(_vm->_vm_internal);
-		_vm->_vm_internal->ref_objects.erase(_internal->obj);
-		sq_release(_vm->_vm_internal->vm, &_internal->obj);
+	if (SquirrelVM *vm = _get_vm()) {
+		DEV_ASSERT(vm->_vm_internal);
+		vm->_vm_internal->ref_objects.erase(_internal->obj);
+		sq_release(vm->_vm_internal->vm, &_internal->obj);
 	}
 	memdelete(_internal);
 }
@@ -1380,14 +1383,14 @@ SquirrelVariant::~SquirrelVariant() {
 bool SquirrelVariant::is_owned_by(const Ref<SquirrelVMBase> &p_vm_or_thread) const {
 	ERR_FAIL_COND_V(p_vm_or_thread.is_null(), false);
 
-	if (unlikely(!_vm)) {
+	if (unlikely(_vm.is_null())) {
 		const Ref<SquirrelVM> &this_vm = Ref<SquirrelVariant>(this);
 		ERR_FAIL_COND_V_MSG(this_vm.is_valid(), false, "\"im not owned! im not owned!!\", i continue to insist as i slowly shrink and transform into a SquirrelVM");
 		ERR_FAIL_V_MSG(false, "SquirrelVariant objects should not be created using .new()");
 	}
 
 	if (likely(p_vm_or_thread->_vm_internal)) {
-		return p_vm_or_thread == _vm;
+		return ObjectID(p_vm_or_thread->get_instance_id()) == _vm;
 	}
 
 	DEV_ASSERT(sq_isthread(p_vm_or_thread->_internal->obj));
@@ -1397,7 +1400,10 @@ bool SquirrelVariant::is_owned_by(const Ref<SquirrelVMBase> &p_vm_or_thread) con
 uint64_t SquirrelVariant::get_squirrel_reference_count() const {
 	ERR_FAIL_COND_V(sq_isnull(_internal->obj), 0);
 
-	return sq_getrefcount(_vm->_vm_internal->vm, &_internal->obj);
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, 0);
+
+	return sq_getrefcount(vm->_vm_internal->vm, &_internal->obj);
 }
 
 Ref<SquirrelIterator> SquirrelVariant::iterate() const {
@@ -1413,32 +1419,36 @@ Ref<SquirrelIterator> SquirrelVariant::iterate() const {
 Ref<SquirrelWeakRef> SquirrelVariant::weak_ref() const {
 	ERR_FAIL_COND_V(sq_isnull(_internal->obj), Ref<SquirrelWeakRef>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_weakref(_vm->_vm_internal->vm, -1);
-	const Ref<SquirrelWeakRef> ref = _vm->get_stack(-1);
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelWeakRef>());
+
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_weakref(vm->_vm_internal->vm, -1);
+	const Ref<SquirrelWeakRef> ref = vm->get_stack(-1);
 	DEV_ASSERT(ref.is_valid());
-	sq_pop(_vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return ref;
 }
 
 String SquirrelVariant::_to_string() const {
 	if (likely(!sq_isnull(_internal->obj))) {
-		DEV_ASSERT(_vm);
+		SquirrelVM *vm = _get_vm();
+		ERR_FAIL_NULL_V(vm, "Squirrel object from disposed VM");
 
-		sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-		if (unlikely(SQ_FAILED(sq_tostring(_vm->_vm_internal->vm, -1)))) {
-			sq_poptop(_vm->_vm_internal->vm);
+		sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+		if (unlikely(SQ_FAILED(sq_tostring(vm->_vm_internal->vm, -1)))) {
+			sq_poptop(vm->_vm_internal->vm);
 		} else {
 			const SQChar *string_data = nullptr;
 			SQInteger string_size = 0;
-			if (likely(SQ_SUCCEEDED(sq_getstringandsize(_vm->_vm_internal->vm, -1, &string_data, &string_size)))) {
+			if (likely(SQ_SUCCEEDED(sq_getstringandsize(vm->_vm_internal->vm, -1, &string_data, &string_size)))) {
 				String string = String::utf8(string_data, string_size);
-				sq_pop(_vm->_vm_internal->vm, 2);
+				sq_pop(vm->_vm_internal->vm, 2);
 				return string;
 			}
 
-			sq_pop(_vm->_vm_internal->vm, 2);
+			sq_pop(vm->_vm_internal->vm, 2);
 		}
 
 		return vformat("<error %s:%d>", get_class(), get_instance_id());
@@ -1464,187 +1474,220 @@ void SquirrelTable::_bind_methods() {
 }
 
 bool SquirrelTable::set_delegate(const Ref<SquirrelTable> &p_delegate) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
-	ERR_FAIL_COND_V(p_delegate.is_valid() && !p_delegate->is_owned_by(_vm), false);
+	ERR_FAIL_COND_V(p_delegate.is_valid() && !p_delegate->is_owned_by(vm), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	if (p_delegate.is_valid()) {
-		sq_pushobject(_vm->_vm_internal->vm, p_delegate->_internal->obj);
+		sq_pushobject(vm->_vm_internal->vm, p_delegate->_internal->obj);
 	} else {
-		sq_pushnull(_vm->_vm_internal->vm);
+		sq_pushnull(vm->_vm_internal->vm);
 	}
-	bool ok = SQ_SUCCEEDED(sq_setdelegate(_vm->_vm_internal->vm, -2));
-	sq_poptop(_vm->_vm_internal->vm);
+	const bool ok = SQ_SUCCEEDED(sq_setdelegate(vm->_vm_internal->vm, -2));
+	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 Ref<SquirrelTable> SquirrelTable::get_delegate() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelTable>());
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), Ref<SquirrelTable>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_getdelegate(_vm->_vm_internal->vm, -1);
-	const Variant delegate = _vm->get_stack(-1);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_getdelegate(vm->_vm_internal->vm, -1);
+	const Variant delegate = vm->get_stack(-1);
 	DEV_ASSERT(delegate == Variant() || Ref<SquirrelTable>(delegate).is_valid());
-	sq_pop(_vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return delegate;
 }
 
 bool SquirrelTable::new_slot(const Variant &p_key, const Variant &p_value) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_key))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_key))) {
+		sq_poptop(vm->_vm_internal->vm);
 
 		return false;
 	}
 
-	if (unlikely(!_vm->push_stack(p_value))) {
-		sq_pop(_vm->_vm_internal->vm, 2);
+	if (unlikely(!vm->push_stack(p_value))) {
+		sq_pop(vm->_vm_internal->vm, 2);
 
 		return false;
 	}
 
-	const bool ok = SQ_SUCCEEDED(sq_newslot(_vm->_vm_internal->vm, -3, SQFalse));
-	sq_pop(_vm->_vm_internal->vm, ok ? 1 : 3);
+	const bool ok = SQ_SUCCEEDED(sq_newslot(vm->_vm_internal->vm, -3, SQFalse));
+	sq_pop(vm->_vm_internal->vm, ok ? 1 : 3);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 bool SquirrelTable::set_slot(const Variant &p_key, const Variant &p_value, bool p_raw) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_key))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_key))) {
+		sq_poptop(vm->_vm_internal->vm);
 
 		return false;
 	}
 
-	if (unlikely(!_vm->push_stack(p_value))) {
-		sq_pop(_vm->_vm_internal->vm, 2);
+	if (unlikely(!vm->push_stack(p_value))) {
+		sq_pop(vm->_vm_internal->vm, 2);
 
 		return false;
 	}
 
 	const bool ok = p_raw ?
-		SQ_SUCCEEDED(sq_rawset(_vm->_vm_internal->vm, -3)) :
-		SQ_SUCCEEDED(sq_set(_vm->_vm_internal->vm, -3));
-	sq_pop(_vm->_vm_internal->vm, ok || p_raw ? 1 : 3);
+		SQ_SUCCEEDED(sq_rawset(vm->_vm_internal->vm, -3)) :
+		SQ_SUCCEEDED(sq_set(vm->_vm_internal->vm, -3));
+	sq_pop(vm->_vm_internal->vm, ok || p_raw ? 1 : 3);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 bool SquirrelTable::has_slot(const Variant &p_key, bool p_raw) const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_key))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_key))) {
+		sq_poptop(vm->_vm_internal->vm);
 
 		return false;
 	}
 
 	const bool ok = p_raw ?
-		SQ_SUCCEEDED(sq_rawget(_vm->_vm_internal->vm, -2)) :
-		SQ_SUCCEEDED(sq_get(_vm->_vm_internal->vm, -2));
+		SQ_SUCCEEDED(sq_rawget(vm->_vm_internal->vm, -2)) :
+		SQ_SUCCEEDED(sq_get(vm->_vm_internal->vm, -2));
 
 	if (likely(ok)) {
-		sq_pop(_vm->_vm_internal->vm, 2);
+		sq_pop(vm->_vm_internal->vm, 2);
 
 		return true;
 	}
 
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_poptop(vm->_vm_internal->vm);
 
 	return false;
 }
 
 Variant SquirrelTable::get_slot(const Variant &p_key, bool p_raw) const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Variant());
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), Variant());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_key))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_key))) {
+		sq_poptop(vm->_vm_internal->vm);
 
 		return Variant();
 	}
 
 	const bool ok = p_raw ?
-		SQ_SUCCEEDED(sq_rawget(_vm->_vm_internal->vm, -2)) :
-		SQ_SUCCEEDED(sq_get(_vm->_vm_internal->vm, -2));
+		SQ_SUCCEEDED(sq_rawget(vm->_vm_internal->vm, -2)) :
+		SQ_SUCCEEDED(sq_get(vm->_vm_internal->vm, -2));
 
 	if (likely(ok)) {
-		const Variant value = _vm->get_stack(-1);
+		const Variant value = vm->get_stack(-1);
 
-		sq_pop(_vm->_vm_internal->vm, 2);
+		sq_pop(vm->_vm_internal->vm, 2);
 
 		return value;
 	}
 
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_poptop(vm->_vm_internal->vm);
 
 	ERR_FAIL_V(Variant());
 }
 
 void SquirrelTable::delete_slot(const Variant &p_key, bool p_raw) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL(vm);
+
 	ERR_FAIL_COND(!sq_istable(_internal->obj));
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_key))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_key))) {
+		sq_poptop(vm->_vm_internal->vm);
 
 		return;
 	}
 
 	if (p_raw) {
-		sq_rawdeleteslot(_vm->_vm_internal->vm, -2, SQFalse);
+		sq_rawdeleteslot(vm->_vm_internal->vm, -2, SQFalse);
 	} else {
-		sq_deleteslot(_vm->_vm_internal->vm, -2, SQFalse);
+		sq_deleteslot(vm->_vm_internal->vm, -2, SQFalse);
 	}
 
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_poptop(vm->_vm_internal->vm);
 }
 
 int64_t SquirrelTable::size() const {
-	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, 0);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	const SQInteger size = sq_getsize(_vm->_vm_internal->vm, -1);
-	sq_poptop(_vm->_vm_internal->vm);
+	ERR_FAIL_COND_V(!sq_istable(_internal->obj), 0);
+
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	const SQInteger size = sq_getsize(vm->_vm_internal->vm, -1);
+	sq_poptop(vm->_vm_internal->vm);
 
 	return size;
 }
 
 void SquirrelTable::clear() {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL(vm);
+
 	ERR_FAIL_COND(!sq_istable(_internal->obj));
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_clear(_vm->_vm_internal->vm, -1);
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_clear(vm->_vm_internal->vm, -1);
+	sq_poptop(vm->_vm_internal->vm);
 }
 
 Ref<SquirrelTable> SquirrelTable::duplicate() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelTable>());
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), Ref<SquirrelTable>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	ERR_FAIL_COND_V(SQ_FAILED(sq_clone(_vm->_vm_internal->vm, -1)), (sq_poptop(_vm->_vm_internal->vm), Ref<SquirrelTable>()));
-	const Ref<SquirrelTable> table = _vm->get_stack(-1);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	ERR_FAIL_COND_V(SQ_FAILED(sq_clone(vm->_vm_internal->vm, -1)), (sq_poptop(vm->_vm_internal->vm), Ref<SquirrelTable>()));
+	const Ref<SquirrelTable> table = vm->get_stack(-1);
 	DEV_ASSERT(table.is_valid());
-	sq_pop(_vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return table;
 }
 
 bool SquirrelTable::wrap_callables(const TypedDictionary<String, Callable> &p_callables, bool p_varargs) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_istable(_internal->obj), false);
 
 	const PackedStringArray keys(p_callables.keys());
@@ -1652,7 +1695,7 @@ bool SquirrelTable::wrap_callables(const TypedDictionary<String, Callable> &p_ca
 	// create functions before assigning any so we can be atomic
 	HashMap<String, Ref<SquirrelNativeFunction>> functions;
 	for (int64_t i = 0; i < keys.size(); i++) {
-		const Ref<SquirrelNativeFunction> func = _vm->wrap_callable(p_callables[keys[i]], p_varargs);
+		const Ref<SquirrelNativeFunction> func = vm->wrap_callable(p_callables[keys[i]], p_varargs);
 		ERR_FAIL_COND_V(func.is_null(), false);
 		functions.insert(keys[i], func);
 	}
@@ -1681,148 +1724,181 @@ void SquirrelArray::_bind_methods() {
 }
 
 bool SquirrelArray::set_item(int64_t p_index, const Variant &p_value) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_pushinteger(_vm->_vm_internal->vm, p_index);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_pushinteger(vm->_vm_internal->vm, p_index);
 
-	if (unlikely(!_vm->push_stack(p_value))) {
-		sq_pop(_vm->_vm_internal->vm, 2);
+	if (unlikely(!vm->push_stack(p_value))) {
+		sq_pop(vm->_vm_internal->vm, 2);
 		return false;
 	}
 
-	if (unlikely(SQ_FAILED(sq_rawset(_vm->_vm_internal->vm, -3)))) {
-		sq_pop(_vm->_vm_internal->vm, 3);
+	if (unlikely(SQ_FAILED(sq_rawset(vm->_vm_internal->vm, -3)))) {
+		sq_pop(vm->_vm_internal->vm, 3);
 		return false;
 	}
 
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_poptop(vm->_vm_internal->vm);
 	return true;
 }
 
 Variant SquirrelArray::get_item(int64_t p_index) const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Variant());
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), Variant());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_pushinteger(_vm->_vm_internal->vm, p_index);
-	if (unlikely(SQ_FAILED(sq_rawget(_vm->_vm_internal->vm, -2)))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_pushinteger(vm->_vm_internal->vm, p_index);
+	if (unlikely(SQ_FAILED(sq_rawget(vm->_vm_internal->vm, -2)))) {
+		sq_poptop(vm->_vm_internal->vm);
 		ERR_FAIL_V(Variant());
 	}
 
-	const Variant item = _vm->get_stack(-1);
-	sq_pop(_vm->_vm_internal->vm, 2);
+	const Variant item = vm->get_stack(-1);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return item;
 }
 
 bool SquirrelArray::append(const Variant &p_value) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_value))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_value))) {
+		sq_poptop(vm->_vm_internal->vm);
 		return false;
 	}
 
-	bool ok = SQ_SUCCEEDED(sq_arrayappend(_vm->_vm_internal->vm, -1));
-	sq_poptop(_vm->_vm_internal->vm);
+	const bool ok = SQ_SUCCEEDED(sq_arrayappend(vm->_vm_internal->vm, -1));
+	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 bool SquirrelArray::insert(int64_t p_index, const Variant &p_value) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_value))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_value))) {
+		sq_poptop(vm->_vm_internal->vm);
 		return false;
 	}
 
-	bool ok = SQ_SUCCEEDED(sq_arrayinsert(_vm->_vm_internal->vm, -1, p_index));
-	sq_poptop(_vm->_vm_internal->vm);
+	const bool ok = SQ_SUCCEEDED(sq_arrayinsert(vm->_vm_internal->vm, -1, p_index));
+	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 bool SquirrelArray::remove(int64_t p_index) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	bool ok = SQ_SUCCEEDED(sq_arrayremove(_vm->_vm_internal->vm, -1, p_index));
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	const bool ok = SQ_SUCCEEDED(sq_arrayremove(vm->_vm_internal->vm, -1, p_index));
+	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 Variant SquirrelArray::pop_back() {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Variant());
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), Variant());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (likely(SQ_SUCCEEDED(sq_arraypop(_vm->_vm_internal->vm, -1, SQTrue)))) {
-		const Variant item = _vm->get_stack(-1);
-		sq_pop(_vm->_vm_internal->vm, 2);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (likely(SQ_SUCCEEDED(sq_arraypop(vm->_vm_internal->vm, -1, SQTrue)))) {
+		const Variant item = vm->get_stack(-1);
+		sq_pop(vm->_vm_internal->vm, 2);
 
 		return item;
 	}
 
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_poptop(vm->_vm_internal->vm);
 	ERR_FAIL_V(Variant());
 }
 
 bool SquirrelArray::resize(int64_t p_size) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	bool ok = SQ_SUCCEEDED(sq_arrayresize(_vm->_vm_internal->vm, -1, p_size));
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	bool ok = SQ_SUCCEEDED(sq_arrayresize(vm->_vm_internal->vm, -1, p_size));
+	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 int64_t SquirrelArray::size() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, 0);
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), 0);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	const SQInteger size = sq_getsize(_vm->_vm_internal->vm, -1);
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	const SQInteger size = sq_getsize(vm->_vm_internal->vm, -1);
+	sq_poptop(vm->_vm_internal->vm);
 
 	return size;
 }
 
 void SquirrelArray::reverse() {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL(vm);
+
 	ERR_FAIL_COND(!sq_isarray(_internal->obj));
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_arrayreverse(_vm->_vm_internal->vm, -1);
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_arrayreverse(vm->_vm_internal->vm, -1);
+	sq_poptop(vm->_vm_internal->vm);
 }
 
 void SquirrelArray::clear() {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL(vm);
+
 	ERR_FAIL_COND(!sq_isarray(_internal->obj));
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_clear(_vm->_vm_internal->vm, -1);
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_clear(vm->_vm_internal->vm, -1);
+	sq_poptop(vm->_vm_internal->vm);
 }
 
 Ref<SquirrelArray> SquirrelArray::duplicate() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelArray>());
+
 	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), Ref<SquirrelArray>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	ERR_FAIL_COND_V(SQ_FAILED(sq_clone(_vm->_vm_internal->vm, -1)), (sq_poptop(_vm->_vm_internal->vm), Ref<SquirrelArray>()));
-	const Ref<SquirrelArray> arr = _vm->get_stack(-1);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	ERR_FAIL_COND_V(SQ_FAILED(sq_clone(vm->_vm_internal->vm, -1)), (sq_poptop(vm->_vm_internal->vm), Ref<SquirrelArray>()));
+	const Ref<SquirrelArray> arr = vm->get_stack(-1);
 	DEV_ASSERT(arr.is_valid());
-	sq_pop(_vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return arr;
 }
@@ -1837,31 +1913,37 @@ void SquirrelUserData::_bind_methods() {
 }
 
 bool SquirrelUserData::set_delegate(const Ref<SquirrelTable> &p_delegate) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_isuserdata(_internal->obj), false);
-	ERR_FAIL_COND_V(p_delegate.is_valid() && !p_delegate->is_owned_by(_vm), false);
+	ERR_FAIL_COND_V(p_delegate.is_valid() && !p_delegate->is_owned_by(vm), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	if (p_delegate.is_valid()) {
-		sq_pushobject(_vm->_vm_internal->vm, p_delegate->_internal->obj);
+		sq_pushobject(vm->_vm_internal->vm, p_delegate->_internal->obj);
 	} else {
-		sq_pushnull(_vm->_vm_internal->vm);
+		sq_pushnull(vm->_vm_internal->vm);
 	}
-	bool ok = SQ_SUCCEEDED(sq_setdelegate(_vm->_vm_internal->vm, -2));
-	sq_poptop(_vm->_vm_internal->vm);
+	bool ok = SQ_SUCCEEDED(sq_setdelegate(vm->_vm_internal->vm, -2));
+	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
 
 Ref<SquirrelTable> SquirrelUserData::get_delegate() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelTable>());
+
 	ERR_FAIL_COND_V(!sq_isuserdata(_internal->obj), Ref<SquirrelTable>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_getdelegate(_vm->_vm_internal->vm, -1);
-	const Variant delegate = _vm->get_stack(-1);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_getdelegate(vm->_vm_internal->vm, -1);
+	const Variant delegate = vm->get_stack(-1);
 	DEV_ASSERT(delegate == Variant() || Ref<SquirrelTable>(delegate).is_valid());
-	sq_pop(_vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return delegate;
 }
@@ -1874,12 +1956,13 @@ bool SquirrelUserData::is_variant() const {
 }
 
 Variant SquirrelUserData::get_variant() const {
-	ERR_FAIL_NULL_V(_vm, Variant());
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Variant());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	Variant value;
-	(void)SquirrelVariantUserData::get(value, _vm->_vm_internal->vm, -1);
-	sq_poptop(_vm->_vm_internal->vm);
+	(void)SquirrelVariantUserData::get(value, vm->_vm_internal->vm, -1);
+	sq_poptop(vm->_vm_internal->vm);
 
 	return value;
 }
@@ -1899,37 +1982,39 @@ void SquirrelAnyFunction::_bind_methods() {
 }
 
 String SquirrelAnyFunction::get_name() const {
-	ERR_FAIL_NULL_V(_vm, String());
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, String());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 
-	if (unlikely(SQ_FAILED(sq_getclosurename(_vm->_vm_internal->vm, -1)))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	if (unlikely(SQ_FAILED(sq_getclosurename(vm->_vm_internal->vm, -1)))) {
+		sq_poptop(vm->_vm_internal->vm);
 		ERR_FAIL_V_MSG(String(), "the target is not a closure");
 	}
 
-	const String name = _vm->get_stack(-1);
-	sq_pop(_vm->_vm_internal->vm, 2);
+	const String name = vm->get_stack(-1);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return name;
 }
 
 Ref<SquirrelAnyFunction> SquirrelAnyFunction::bind_env(const Ref<SquirrelVariant> &p_env) const {
-	ERR_FAIL_NULL_V(_vm, Ref<SquirrelAnyFunction>());
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelAnyFunction>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_env))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_env))) {
+		sq_poptop(vm->_vm_internal->vm);
 		return Ref<SquirrelAnyFunction>(); // push_stack already wrote an error message
 	}
 
-	if (unlikely(SQ_FAILED(sq_bindenv(_vm->_vm_internal->vm, -2)))) {
-		sq_pop(_vm->_vm_internal->vm, 2);
-		ERR_FAIL_V_MSG(Ref<SquirrelAnyFunction>(), _vm->get_last_error().stringify());
+	if (unlikely(SQ_FAILED(sq_bindenv(vm->_vm_internal->vm, -2)))) {
+		sq_pop(vm->_vm_internal->vm, 2);
+		ERR_FAIL_V_MSG(Ref<SquirrelAnyFunction>(), vm->get_last_error().stringify());
 	}
 
-	const Ref<SquirrelAnyFunction> bound = _vm->get_stack(-1);
-	sq_pop(_vm->_vm_internal->vm, 2);
+	const Ref<SquirrelAnyFunction> bound = vm->get_stack(-1);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return bound;
 }
@@ -1943,59 +2028,63 @@ void SquirrelFunction::_bind_methods() {
 }
 
 void SquirrelFunction::set_root_table(const Ref<SquirrelTable> &p_root_table) {
-	ERR_FAIL_NULL(_vm);
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL(vm);
+
 	ERR_FAIL_COND(p_root_table.is_null());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(!_vm->push_stack(p_root_table))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(!vm->push_stack(p_root_table))) {
+		sq_poptop(vm->_vm_internal->vm);
 		return;
 	}
 
-	if (unlikely(SQ_FAILED(sq_setclosureroot(_vm->_vm_internal->vm, -2)))) {
-		sq_pop(_vm->_vm_internal->vm, 2);
-		ERR_FAIL_MSG(_vm->get_last_error().stringify());
+	if (unlikely(SQ_FAILED(sq_setclosureroot(vm->_vm_internal->vm, -2)))) {
+		sq_pop(vm->_vm_internal->vm, 2);
+		ERR_FAIL_MSG(vm->get_last_error().stringify());
 	}
 
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_poptop(vm->_vm_internal->vm);
 }
 
 Ref<SquirrelTable> SquirrelFunction::get_root_table() const {
-	ERR_FAIL_NULL_V(_vm, Ref<SquirrelTable>());
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelTable>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(SQ_FAILED(sq_getclosureroot(_vm->_vm_internal->vm, -1)))) {
-		sq_poptop(_vm->_vm_internal->vm);
-		ERR_FAIL_V_MSG(Ref<SquirrelTable>(), _vm->get_last_error().stringify());
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(SQ_FAILED(sq_getclosureroot(vm->_vm_internal->vm, -1)))) {
+		sq_poptop(vm->_vm_internal->vm);
+		ERR_FAIL_V_MSG(Ref<SquirrelTable>(), vm->get_last_error().stringify());
 	}
 
-	const Ref<SquirrelTable> root = _vm->get_stack(-1);
-	sq_pop(_vm->_vm_internal->vm, 2);
+	const Ref<SquirrelTable> root = vm->get_stack(-1);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return root;
 }
 
 Array SquirrelFunction::get_outer_values() const {
-	ERR_FAIL_NULL_V(_vm, Array());
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Array());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	SQInteger nparams = 0, nfreevars = 0;
-	if (unlikely(SQ_FAILED(sq_getclosureinfo(_vm->_vm_internal->vm, -1, &nparams, &nfreevars)))) {
-		sq_poptop(_vm->_vm_internal->vm);
-		ERR_FAIL_V_MSG(Array(), _vm->get_last_error().stringify());
+	if (unlikely(SQ_FAILED(sq_getclosureinfo(vm->_vm_internal->vm, -1, &nparams, &nfreevars)))) {
+		sq_poptop(vm->_vm_internal->vm);
+		ERR_FAIL_V_MSG(Array(), vm->get_last_error().stringify());
 	}
 
 	Array array;
 	array.resize(nfreevars);
 
 	for (SQInteger i = 0; i < nfreevars; i++) {
-		if (likely(sq_getfreevariable(_vm->_vm_internal->vm, -1, i))) {
-			array[i] = _vm->get_stack(-1);
-			sq_poptop(_vm->_vm_internal->vm);
+		if (likely(sq_getfreevariable(vm->_vm_internal->vm, -1, i))) {
+			array[i] = vm->get_stack(-1);
+			sq_poptop(vm->_vm_internal->vm);
 		}
 	}
 
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_poptop(vm->_vm_internal->vm);
 
 	return array;
 }
@@ -2009,9 +2098,12 @@ void SquirrelNativeFunction::_bind_methods() {
 }
 
 void SquirrelNativeFunction::set_name(const String &p_name) {
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	sq_setnativeclosurename(_vm->_vm_internal->vm, -1, p_name.utf8());
-	sq_poptop(_vm->_vm_internal->vm);
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL(vm);
+
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	sq_setnativeclosurename(vm->_vm_internal->vm, -1, p_name.utf8());
+	sq_poptop(vm->_vm_internal->vm);
 }
 
 String SquirrelNativeFunction::get_name() const {
@@ -2019,13 +2111,16 @@ String SquirrelNativeFunction::get_name() const {
 }
 
 bool SquirrelNativeFunction::set_params_check(int64_t p_num_args, const String &p_type_mask) {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
 	ERR_FAIL_COND_V(!sq_isnativeclosure(_internal->obj), false);
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	bool ok = SQ_SUCCEEDED(sq_setparamscheck(_vm->_vm_internal->vm, p_num_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_num_args, p_type_mask.utf8()));
-	sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	bool ok = SQ_SUCCEEDED(sq_setparamscheck(vm->_vm_internal->vm, p_num_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_num_args, p_type_mask.utf8()));
+	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_COND_V_MSG(!ok, false, _vm->get_last_error().stringify());
+	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
 
 	return ok;
 }
@@ -2058,13 +2153,16 @@ void SquirrelInstance::_bind_methods() {
 }
 
 Ref<SquirrelInstance> SquirrelInstance::duplicate() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Ref<SquirrelInstance>());
+
 	ERR_FAIL_COND_V(!sq_isinstance(_internal->obj), Ref<SquirrelInstance>());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	ERR_FAIL_COND_V(SQ_FAILED(sq_clone(_vm->_vm_internal->vm, -1)), (sq_poptop(_vm->_vm_internal->vm), Ref<SquirrelInstance>()));
-	const Ref<SquirrelInstance> inst = _vm->get_stack(-1);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	ERR_FAIL_COND_V(SQ_FAILED(sq_clone(vm->_vm_internal->vm, -1)), (sq_poptop(vm->_vm_internal->vm), Ref<SquirrelInstance>()));
+	const Ref<SquirrelInstance> inst = vm->get_stack(-1);
 	DEV_ASSERT(inst.is_valid());
-	sq_pop(_vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return inst;
 }
@@ -2074,16 +2172,19 @@ void SquirrelWeakRef::_bind_methods() {
 }
 
 Variant SquirrelWeakRef::get_object() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, Variant());
+
 	ERR_FAIL_COND_V(!sq_isweakref(_internal->obj), Variant());
 
-	sq_pushobject(_vm->_vm_internal->vm, _internal->obj);
-	if (unlikely(SQ_FAILED(sq_getweakrefval(_vm->_vm_internal->vm, -1)))) {
-		sq_poptop(_vm->_vm_internal->vm);
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(SQ_FAILED(sq_getweakrefval(vm->_vm_internal->vm, -1)))) {
+		sq_poptop(vm->_vm_internal->vm);
 		ERR_FAIL_V(Variant());
 	}
 
-	const Variant object = _vm->get_stack(-1);
-	sq_pop(_vm->_vm_internal->vm, 2);
+	const Variant object = vm->get_stack(-1);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return object;
 }
@@ -2103,24 +2204,27 @@ void SquirrelIterator::_bind_methods() {
 bool SquirrelIterator::next() {
 	ERR_FAIL_COND_V(_container.is_null(), false);
 
-	_container->_vm->push_stack(_container);
-	_container->_vm->push_stack(_iterator);
+	SquirrelVM *vm = _container->_get_vm();
+	ERR_FAIL_NULL_V(vm, false);
 
-	if (likely(SQ_SUCCEEDED(sq_next(_container->_vm->_vm_internal->vm, -2)))) {
-		_iterator = _container->_vm->get_stack(-3);
-		_key = _container->_vm->get_stack(-2);
-		_value = _container->_vm->get_stack(-1);
+	vm->push_stack(_container);
+	vm->push_stack(_iterator);
 
-		sq_pop(_container->_vm->_vm_internal->vm, 4);
+	if (likely(SQ_SUCCEEDED(sq_next(vm->_vm_internal->vm, -2)))) {
+		_iterator = vm->get_stack(-3);
+		_key = vm->get_stack(-2);
+		_value = vm->get_stack(-1);
+
+		sq_pop(vm->_vm_internal->vm, 4);
 
 		return true;
 	}
 
-	_iterator = _container->_vm->get_stack(-1);
+	_iterator = vm->get_stack(-1);
 	_key = Variant();
 	_value = Variant();
 
-	sq_pop(_container->_vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
 	return false;
 }
