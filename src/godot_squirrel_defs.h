@@ -120,8 +120,12 @@ class SquirrelVariant : public godot::RefCounted {
 protected:
 	static void _bind_methods();
 
-	godot::ObjectID _vm;
-	SquirrelVM *_get_vm() const;
+	struct VMHolder {
+		godot::SafeRefCount ref_count;
+		SquirrelVM *vm;
+	};
+	VMHolder *_vm = nullptr;
+	_FORCE_INLINE_ SquirrelVM *_get_vm() const { return likely(_vm) ? _vm->vm : nullptr; }
 
 	struct SquirrelVariantInternal;
 	friend struct SquirrelVariantInternal;
@@ -264,6 +268,9 @@ protected:
 
 	friend class SquirrelVMBase;
 	friend struct SquirrelVMBase::SquirrelVMInternal;
+	friend struct SquirrelVariant::SquirrelVariantInternal;
+
+	VMHolder *_holder;
 
 #ifndef SQUIRREL_NO_PRINT
 	godot::Callable _print_func;
@@ -275,6 +282,7 @@ protected:
 
 public:
 	SquirrelVM();
+	~SquirrelVM();
 
 #ifndef SQUIRREL_NO_PRINT
 	void set_print_func(const godot::Callable &p_print_func);

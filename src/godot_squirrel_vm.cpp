@@ -196,7 +196,8 @@ struct SquirrelVMBase::SquirrelVMInternal {
 };
 
 void SquirrelVariant::SquirrelVariantInternal::init(const Ref<SquirrelVM> &vm, SquirrelVariant *outer, const HSQOBJECT &init_obj) {
-	outer->_vm = ObjectID(vm->get_instance_id());
+	outer->_vm = vm->_holder;
+	CRASH_COND(!outer->_vm->ref_count.ref());
 	obj = init_obj;
 	sq_addref(vm->_vm_internal->vm, &obj);
 }
@@ -1246,6 +1247,16 @@ void SquirrelVM::_bind_methods() {
 }
 
 SquirrelVM::SquirrelVM() : SquirrelVMBase(true) {
+	_holder = memnew(VMHolder);
+	_holder->ref_count.init();
+	_holder->vm = this;
+}
+
+SquirrelVM::~SquirrelVM() {
+	_holder->vm = nullptr;
+	if (_holder->ref_count.unref()) {
+		memdelete(_holder);
+	}
 }
 
 void SquirrelVM::set_print_func(const Callable &p_print_func) {
@@ -1363,10 +1374,6 @@ void SquirrelVariant::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("weak_ref"), &SquirrelVariant::weak_ref);
 }
 
-SquirrelVM *SquirrelVariant::_get_vm() const {
-	return Object::cast_to<SquirrelVM>(ObjectDB::get_instance(_vm));
-}
-
 SquirrelVariant::SquirrelVariant() {
 	_internal = memnew(SquirrelVariantInternal);
 }
@@ -1378,19 +1385,22 @@ SquirrelVariant::~SquirrelVariant() {
 		sq_release(vm->_vm_internal->vm, &_internal->obj);
 	}
 	memdelete(_internal);
+	if (likely(_vm) && unlikely(_vm->ref_count.unref())) {
+		memdelete(_vm);
+	}
 }
 
 bool SquirrelVariant::is_owned_by(const Ref<SquirrelVMBase> &p_vm_or_thread) const {
 	ERR_FAIL_COND_V(p_vm_or_thread.is_null(), false);
 
-	if (unlikely(_vm.is_null())) {
+	if (unlikely(!_vm)) {
 		const Ref<SquirrelVM> &this_vm = Ref<SquirrelVariant>(this);
 		ERR_FAIL_COND_V_MSG(this_vm.is_valid(), false, "\"im not owned! im not owned!!\", i continue to insist as i slowly shrink and transform into a SquirrelVM");
 		ERR_FAIL_V_MSG(false, "SquirrelVariant objects should not be created using .new()");
 	}
 
 	if (likely(p_vm_or_thread->_vm_internal)) {
-		return ObjectID(p_vm_or_thread->get_instance_id()) == _vm;
+		return *p_vm_or_thread == _vm->vm;
 	}
 
 	DEV_ASSERT(sq_isthread(p_vm_or_thread->_internal->obj));
