@@ -683,6 +683,14 @@ bool SquirrelVMBase::push_stack(const godot::Variant &p_value) {
 	ERR_FAIL_V_MSG(false, vformat("Cannot push value %s of type %s to the Squirrel stack.", p_value, p_value.get_type_name(p_value.get_type())));
 }
 
+void SquirrelVMBase::push_stack_native(HSQUIRRELVM p_vm, const Ref<SquirrelVariant> &p_value) {
+	DEV_ASSERT(p_vm);
+	DEV_ASSERT(p_value.is_valid());
+	DEV_ASSERT(p_value->is_owned_by(from_native_vm(p_vm)));
+
+	sq_pushobject(p_vm, p_value->_internal->obj);
+}
+
 void SquirrelVMBase::pop_stack(int64_t p_count) {
 	GET_VM();
 

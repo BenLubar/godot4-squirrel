@@ -217,6 +217,7 @@ public:
 	godot::Variant get_stack(int64_t p_index) const;
 	int64_t get_stack_top() const;
 	bool push_stack(const godot::Variant &p_value);
+	static void push_stack_native(HSQUIRRELVM p_vm, const godot::Ref<SquirrelVariant> &p_value);
 	void pop_stack(int64_t p_count = 1);
 	void remove_stack(int64_t p_index);
 
