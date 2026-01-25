@@ -111,6 +111,7 @@ typedef __int64 SQInteger;
 #else
 typedef long long SQInteger;
 #endif
+typedef char SQChar;
 typedef struct SQVM *HSQUIRRELVM;
 typedef SQInteger (*SQFUNCTION)(HSQUIRRELVM);
 
