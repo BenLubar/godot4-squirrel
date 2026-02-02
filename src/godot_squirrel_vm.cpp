@@ -449,14 +449,14 @@ void SquirrelVMBase::import_math() {
 	sq_pushstring(vm, "rand", -1);
 	sq_pushobject(vm, rng_ud->_internal->obj);
 	sq_newclosure(vm, &squirrel_math_rand, 1);
-	sq_setparamscheck(vm, 1, nullptr);
+	sq_setparamscheck(vm, 1, 1, nullptr);
 	sq_setnativeclosurename(vm, -1, "rand");
 	sq_newslot(vm, -3, SQFalse);
 
 	sq_pushstring(vm, "srand", -1);
 	sq_pushobject(vm, rng_ud->_internal->obj);
 	sq_newclosure(vm, &squirrel_math_srand, 1);
-	sq_setparamscheck(vm, 2, ".n");
+	sq_setparamscheck(vm, 2, 2, ".n");
 	sq_setnativeclosurename(vm, -1, "srand");
 	sq_newslot(vm, -3, SQFalse);
 #endif
@@ -2086,8 +2086,8 @@ Array SquirrelFunction::get_outer_values() const {
 	ERR_FAIL_NULL_V(vm, Array());
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
-	SQInteger nparams = 0, nfreevars = 0;
-	if (unlikely(SQ_FAILED(sq_getclosureinfo(vm->_vm_internal->vm, -1, &nparams, &nfreevars)))) {
+	SQInteger nparamsmin = 0, nparamsmax = 0, nfreevars = 0;
+	if (unlikely(SQ_FAILED(sq_getclosureinfo(vm->_vm_internal->vm, -1, &nparamsmin, &nparamsmax, &nfreevars)))) {
 		sq_poptop(vm->_vm_internal->vm);
 		ERR_FAIL_V_MSG(Array(), vm->get_last_error().stringify());
 	}
@@ -2128,14 +2128,14 @@ String SquirrelNativeFunction::get_name() const {
 	return parent_type::get_name();
 }
 
-bool SquirrelNativeFunction::set_params_check(int64_t p_num_args, const String &p_type_mask) {
+bool SquirrelNativeFunction::set_params_check(int64_t p_min_args, int64_t p_max_args, const String &p_type_mask) {
 	SquirrelVM *vm = _get_vm();
 	ERR_FAIL_NULL_V(vm, false);
 
 	ERR_FAIL_COND_V(!sq_isnativeclosure(_internal->obj), false);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
-	bool ok = SQ_SUCCEEDED(sq_setparamscheck(vm->_vm_internal->vm, p_num_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_num_args, p_type_mask.utf8()));
+	bool ok = SQ_SUCCEEDED(sq_setparamscheck(vm->_vm_internal->vm, p_min_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_min_args, p_max_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_max_args, p_type_mask.utf8()));
 	sq_poptop(vm->_vm_internal->vm);
 
 	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());

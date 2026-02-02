@@ -14,6 +14,7 @@ env_squirrel.Append(CPPDEFINES=["SQUSEDOUBLE"])
 env_squirrel.Append(CPPDEFINES=["_SQ64"])
 
 env_squirrel.Append(CPPDEFINES=["KEEP_SLOT_ORDER"])
+env_squirrel.Append(CPPDEFINES=["NO_POINTER_CMP"])
 
 sources = [
 	"squirrel/squirrel/sqapi.cpp",

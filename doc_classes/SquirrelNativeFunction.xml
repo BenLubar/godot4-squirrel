@@ -11,12 +11,13 @@
 	<methods>
 		<method name="set_params_check">
 			<return type="bool" />
-			<param index="0" name="num_args" type="int" />
-			<param index="1" name="type_mask" type="String" default="&quot;&quot;" />
+			<param index="0" name="min_args" type="int" />
+			<param index="1" name="max_args" type="int" />
+			<param index="2" name="type_mask" type="String" default="&quot;&quot;" />
 			<description>
-				If [param num_args] is positive, it represents the number of expected arguments (including [code]this[/code]) to the function.
-				If [param num_args] is negative, its magnitude represents [i]a lower bound[/i] for the number of expected arguments (including [code]this[/code]) to the function.
-				If [param num_args] is zero, the value will be determined from [param type_mask].
+				If [param min_args] or [param max_args] are positive, they represent the minimum and maximum number of expected arguments (including [code]this[/code]) to the function.
+				If [param min_args] or [param max_args] are zero, the value will be determined from [param type_mask].
+				If [param min_args] or [param max_args] are negative, the minimum or maximum number of arguments is unbounded.
 				[param type_mask] is a sequence of characters representing the expected type for each argument (including [code]this[/code]):
 				[codeblock]
 				o   null
