@@ -18,5 +18,10 @@
 				Returns the object that this [SquirrelWeakRef] points to, or [code]null[/code] if the object was deleted in the [SquirrelVM].
 			</description>
 		</method>
+		<method name="is_valid" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
 	</methods>
 </class>

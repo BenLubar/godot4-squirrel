@@ -461,6 +461,7 @@ protected:
 
 public:
 	godot::Variant get_object() const;
+	bool is_valid() const;
 };
 
 class SquirrelIterator : public godot::RefCounted {

@@ -102,17 +102,15 @@ struct SquirrelVMBase::SquirrelVMInternal {
 	}
 
 	void clean_memoized_variants() {
-		bool found = true;
-		while (found) {
-			found = false;
-			for (auto it = memoized_variants.begin(); it != memoized_variants.end(); ++it) {
-				const Ref<SquirrelUserData> ud = it->value->get_object();
-				if (ud.is_null()) {
-					memoized_variants.remove(it);
-					found = true;
-					break;
-				}
+		LocalVector<Variant> unused;
+		for (const KeyValue<Variant, Ref<SquirrelWeakRef>> &memo : memoized_variants) {
+			if (unlikely(!memo.value->is_valid())) {
+				unused.push_back(memo.key);
 			}
+		}
+
+		for (const Variant &key : unused) {
+			memoized_variants.erase(key);
 		}
 	}
 
@@ -2112,7 +2110,7 @@ void SquirrelNativeFunction::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_name"), &SquirrelNativeFunction::get_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_NONE), "set_name", "get_name");
 
-	ClassDB::bind_method(D_METHOD("set_params_check", "num_args", "type_mask"), &SquirrelNativeFunction::set_params_check, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("set_params_check", "min_args", "max_args", "type_mask"), &SquirrelNativeFunction::set_params_check, DEFVAL(String()));
 }
 
 void SquirrelNativeFunction::set_name(const String &p_name) {
@@ -2187,6 +2185,7 @@ Ref<SquirrelInstance> SquirrelInstance::duplicate() const {
 
 void SquirrelWeakRef::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_object"), &SquirrelWeakRef::get_object);
+	ClassDB::bind_method(D_METHOD("is_valid"), &SquirrelWeakRef::is_valid);
 }
 
 Variant SquirrelWeakRef::get_object() const {
@@ -2205,6 +2204,30 @@ Variant SquirrelWeakRef::get_object() const {
 	sq_pop(vm->_vm_internal->vm, 2);
 
 	return object;
+}
+
+bool SquirrelWeakRef::is_valid() const {
+	SquirrelVM *vm = _get_vm();
+	ERR_FAIL_NULL_V(vm, false);
+
+	ERR_FAIL_COND_V(!sq_isweakref(_internal->obj), false);
+
+	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
+	if (unlikely(SQ_FAILED(sq_getweakrefval(vm->_vm_internal->vm, -1)))) {
+		sq_poptop(vm->_vm_internal->vm);
+		ERR_FAIL_V(false);
+	}
+
+	HSQOBJECT obj{};
+	if (unlikely(SQ_FAILED(sq_getstackobj(vm->_vm_internal->vm, -1, &obj)))) {
+		sq_pop(vm->_vm_internal->vm, 2);
+		ERR_FAIL_V(false);
+	}
+
+	const bool is_null = sq_isnull(obj);
+	sq_pop(vm->_vm_internal->vm, 2);
+
+	return !is_null;
 }
 
 void SquirrelIterator::_bind_methods() {
