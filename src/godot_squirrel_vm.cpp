@@ -103,15 +103,19 @@ struct SquirrelVMBase::SquirrelVMInternal {
 
 	void clean_memoized_variants() {
 		LocalVector<Variant> unused;
-		for (const KeyValue<Variant, Ref<SquirrelWeakRef>> &memo : memoized_variants) {
-			if (unlikely(!memo.value->is_valid())) {
-				unused.push_back(memo.key);
-			}
-		}
+		do {
+			unused.clear();
 
-		for (const Variant &key : unused) {
-			memoized_variants.erase(key);
-		}
+			for (const KeyValue<Variant, Ref<SquirrelWeakRef>> &memo : memoized_variants) {
+				if (unlikely(!memo.value->is_valid())) {
+					unused.push_back(memo.key);
+				}
+			}
+
+			for (const Variant &key : unused) {
+				memoized_variants.erase(key);
+			}
+		} while (!unused.is_empty());
 	}
 
 #ifndef SQUIRREL_NO_DEBUG
