@@ -87,6 +87,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 	};
 	HashMap<HSQOBJECT, SquirrelVariant *, SQObjectHasher, SQObjectComparator> ref_objects;
 	HashMap<Variant, Ref<SquirrelWeakRef>, VariantHasher, VariantComparator> memoized_variants;
+	HashMap<ObjectID, Ref<SquirrelWeakRef>> memoized_objects;
 
 	template<typename T>
 	Ref<T> make_ref_object(const HSQOBJECT &obj) {
@@ -103,8 +104,10 @@ struct SquirrelVMBase::SquirrelVMInternal {
 
 	void clean_memoized_variants() {
 		LocalVector<Variant> unused;
+		LocalVector<ObjectID> unused_object;
 		do {
 			unused.clear();
+			unused_object.clear();
 
 			for (const KeyValue<Variant, Ref<SquirrelWeakRef>> &memo : memoized_variants) {
 				if (unlikely(!memo.value->is_valid())) {
@@ -112,10 +115,20 @@ struct SquirrelVMBase::SquirrelVMInternal {
 				}
 			}
 
+			for (const KeyValue<ObjectID, Ref<SquirrelWeakRef>> &memo : memoized_objects) {
+				if (unlikely(!memo.value->is_valid())) {
+					unused_object.push_back(memo.key);
+				}
+			}
+
 			for (const Variant &key : unused) {
 				memoized_variants.erase(key);
 			}
-		} while (!unused.is_empty());
+
+			for (ObjectID key : unused_object) {
+				memoized_objects.erase(key);
+			}
+		} while (!unused.is_empty() || !unused_object.is_empty());
 	}
 
 #ifndef SQUIRREL_NO_DEBUG
@@ -324,6 +337,7 @@ SquirrelVMBase::~SquirrelVMBase() {
 	if (_vm_internal) {
 		_vm_internal->ref_objects.clear();
 		_vm_internal->memoized_variants.clear();
+		_vm_internal->memoized_objects.clear();
 		sq_close(_vm_internal->vm);
 		memdelete(_vm_internal);
 	}
@@ -842,18 +856,33 @@ Ref<SquirrelUserData> SquirrelVMBase::intern_variant(const Variant &p_value) {
 	GET_VM(Ref<SquirrelUserData>());
 	GET_OUTER_VM();
 
-	auto it = outer_vm->_vm_internal->memoized_variants.find(p_value);
-	if (it != outer_vm->_vm_internal->memoized_variants.end()) {
-		const Ref<SquirrelUserData> ud = it->value->get_object();
-		if (ud.is_valid()) {
-			return ud;
+	if (p_value.get_type() == Variant::OBJECT) {
+		auto it = outer_vm->_vm_internal->memoized_objects.find(p_value);
+		if (it != outer_vm->_vm_internal->memoized_objects.end()) {
+			const Ref<SquirrelUserData> ud = it->value->get_object();
+			if (ud.is_valid()) {
+				return ud;
+			}
 		}
+
+		const Ref<SquirrelUserData> wrapped = wrap_variant(p_value);
+		outer_vm->_vm_internal->memoized_objects[p_value] = wrapped->weak_ref();
+
+		return wrapped;
+	} else {
+		auto it = outer_vm->_vm_internal->memoized_variants.find(p_value);
+		if (it != outer_vm->_vm_internal->memoized_variants.end()) {
+			const Ref<SquirrelUserData> ud = it->value->get_object();
+			if (ud.is_valid()) {
+				return ud;
+			}
+		}
+
+		const Ref<SquirrelUserData> wrapped = wrap_variant(p_value);
+		outer_vm->_vm_internal->memoized_variants[p_value] = wrapped->weak_ref();
+
+		return wrapped;
 	}
-
-	const Ref<SquirrelUserData> wrapped = wrap_variant(p_value);
-	outer_vm->_vm_internal->memoized_variants[p_value] = wrapped->weak_ref();
-
-	return wrapped;
 }
 
 SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRELVM vm) {
@@ -1302,6 +1331,7 @@ bool SquirrelVM::is_debug_enabled() const {
 
 void SquirrelVM::clear_interned_variants() {
 	_vm_internal->memoized_variants.clear();
+	_vm_internal->memoized_objects.clear();
 }
 
 Ref<SquirrelTable> SquirrelVM::get_table_default_delegate() const {
