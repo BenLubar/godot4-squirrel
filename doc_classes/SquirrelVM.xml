@@ -12,6 +12,13 @@
 	<tutorials>
 		<link title="Squirrel Reference Manual">http://www.squirrel-lang.org/squirreldoc/reference/index.html</link>
 	</tutorials>
+	<methods>
+		<method name="clear_interned_variants">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="array_default_delegate" type="SquirrelTable" setter="" getter="get_array_default_delegate">
 			The [url=http://www.squirrel-lang.org/squirreldoc/reference/language/builtin_functions.html#array]array[/url] delegate table.

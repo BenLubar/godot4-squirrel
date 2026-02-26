@@ -1234,6 +1234,8 @@ void SquirrelVM::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "debug_enabled"), "set_debug_enabled", "is_debug_enabled");
 #endif
 
+	ClassDB::bind_method(D_METHOD("clear_interned_variants"), &SquirrelVM::clear_interned_variants);
+
 	ClassDB::bind_method(D_METHOD("get_table_default_delegate"), &SquirrelVM::get_table_default_delegate);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "table_default_delegate", PROPERTY_HINT_RESOURCE_TYPE, SquirrelTable::get_class_static(), PROPERTY_USAGE_READ_ONLY), "", "get_table_default_delegate");
 	ClassDB::bind_method(D_METHOD("get_array_default_delegate"), &SquirrelVM::get_array_default_delegate);
@@ -1297,6 +1299,10 @@ bool SquirrelVM::is_debug_enabled() const {
 	return _debug_enabled;
 }
 #endif
+
+void SquirrelVM::clear_interned_variants() {
+	_vm_internal->memoized_variants.clear();
+}
 
 Ref<SquirrelTable> SquirrelVM::get_table_default_delegate() const {
 	ERR_FAIL_COND_V(SQ_FAILED(sq_getdefaultdelegate(_vm_internal->vm, OT_TABLE)), Ref<SquirrelTable>());

@@ -298,6 +298,8 @@ public:
 	bool is_debug_enabled() const;
 #endif
 
+	void clear_interned_variants();
+
 	godot::Ref<SquirrelTable> get_table_default_delegate() const;
 	godot::Ref<SquirrelTable> get_array_default_delegate() const;
 	godot::Ref<SquirrelTable> get_string_default_delegate() const;

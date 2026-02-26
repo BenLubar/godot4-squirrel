@@ -194,7 +194,7 @@
 			<return type="void" />
 			<param index="0" name="index" type="int" />
 			<description>
-				Removes an arbitrary value from the stack by [param index].
+				Removes an arbitrary value from the stack at [param index].
 			</description>
 		</method>
 		<method name="reset_last_error">
