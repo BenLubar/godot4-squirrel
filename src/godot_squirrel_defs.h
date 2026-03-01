@@ -12,6 +12,8 @@
 #define SQUIRREL_INITIAL_STACK_SIZE 128
 #endif
 
+class SquirrelThrow;
+
 class SquirrelScript : public godot::Resource {
 	GDCLASS(SquirrelScript, godot::Resource);
 
@@ -218,6 +220,7 @@ public:
 	godot::Variant get_stack(int64_t p_index) const;
 	int64_t get_stack_top() const;
 	bool push_stack(const godot::Variant &p_value);
+	godot::Ref<SquirrelThrow> push_stack_or_error(const godot::Variant &p_value);
 	static void push_stack_native(HSQUIRRELVM p_vm, const godot::Ref<SquirrelVariant> &p_value);
 	void pop_stack(int64_t p_count = 1);
 	void remove_stack(int64_t p_index);
@@ -226,6 +229,8 @@ public:
 	bool is_suspended() const;
 	godot::Variant wake_up(const godot::Variant &p_value = godot::Variant());
 	godot::Variant wake_up_throw(const godot::Variant &p_exception);
+	godot::Variant wake_up_catch(const godot::Variant &p_value = godot::Variant());
+	godot::Variant wake_up_throw_catch(const godot::Variant &p_exception);
 
 	godot::Ref<SquirrelInstance> create_blob(const godot::PackedByteArray &p_data);
 	godot::Ref<SquirrelTable> create_table();

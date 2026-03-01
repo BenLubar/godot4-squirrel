@@ -244,7 +244,19 @@
 			<description>
 			</description>
 		</method>
+		<method name="wake_up_catch">
+			<return type="Variant" />
+			<param index="0" name="value" type="Variant" default="null" />
+			<description>
+			</description>
+		</method>
 		<method name="wake_up_throw">
+			<return type="Variant" />
+			<param index="0" name="exception" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="wake_up_throw_catch">
 			<return type="Variant" />
 			<param index="0" name="exception" type="Variant" />
 			<description>

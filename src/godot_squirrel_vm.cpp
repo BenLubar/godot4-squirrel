@@ -267,6 +267,8 @@ void SquirrelVMBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_suspended"), &SquirrelVMBase::is_suspended);
 	ClassDB::bind_method(D_METHOD("wake_up", "value"), &SquirrelVMBase::wake_up, DEFVAL(Variant()));
 	ClassDB::bind_method(D_METHOD("wake_up_throw", "exception"), &SquirrelVMBase::wake_up_throw);
+	ClassDB::bind_method(D_METHOD("wake_up_catch", "value"), &SquirrelVMBase::wake_up_catch, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("wake_up_throw_catch", "exception"), &SquirrelVMBase::wake_up_throw_catch);
 
 	ClassDB::bind_method(D_METHOD("create_blob", "data"), &SquirrelVMBase::create_blob);
 	ClassDB::bind_method(D_METHOD("create_table"), &SquirrelVMBase::create_table);
@@ -537,7 +539,7 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 	ERR_FAIL_COND_V(p_func.is_null(), SquirrelThrow::make("func is null"));
 	ERR_FAIL_COND_V(!p_func->is_owned_by(this), SquirrelThrow::make("func is not owned by this VM"));
 
-	GET_VM(SquirrelThrow::make("could not get VM"));
+	GET_VM(SquirrelThrow::make("internal error: missing VM"));
 	GET_OUTER_VM();
 
 	sq_pushobject(vm, p_func->_internal->obj);
@@ -652,56 +654,60 @@ int64_t SquirrelVMBase::get_stack_top() const {
 	return sq_gettop(vm);
 }
 
-bool SquirrelVMBase::push_stack(const godot::Variant &p_value) {
-	GET_VM(false);
+bool SquirrelVMBase::push_stack(const Variant &p_value) {
+	return push_stack_or_error(p_value).is_null();
+}
+
+Ref<SquirrelThrow> SquirrelVMBase::push_stack_or_error(const Variant &p_value) {
+	GET_VM(SquirrelThrow::make("internal error: missing VM"));
 
 	switch (p_value.get_type()) {
 	case Variant::NIL:
 		sq_pushnull(vm);
-		return true;
+		return nullptr;
 	case Variant::INT:
 		sq_pushinteger(vm, static_cast<SQInteger>(p_value.operator int64_t()));
-		return true;
+		return nullptr;
 	case Variant::FLOAT:
 		sq_pushfloat(vm, static_cast<SQFloat>(p_value.operator double()));
-		return true;
+		return nullptr;
 	case Variant::BOOL:
 		sq_pushbool(vm, p_value.operator bool() ? SQTrue : SQFalse);
-		return true;
+		return nullptr;
 	case Variant::STRING:
 	case Variant::STRING_NAME: // support automatically converting StringName to String for convenience
 	{
-		CharString string_bytes = p_value.operator String().utf8();
+		const CharString string_bytes = p_value.operator String().utf8();
 		sq_pushstring(vm, string_bytes, string_bytes.length());
-		return true;
+		return nullptr;
 	}
 	case Variant::OBJECT:
 	{
-		Object *object = p_value;
+		Object *const object = p_value;
 		if (!object) {
 			sq_pushnull(vm);
-			return true;
+			return nullptr;
 		}
 
-		Ref<SquirrelVariant> sqvar = Object::cast_to<SquirrelVariant>(object);
-		ERR_FAIL_COND_V_MSG(sqvar.is_null(), false, vformat("Cannot push object of type %s to the Squirrel stack. Use wrap_variant to pass an opaque object to Squirrel.", object->get_class()));
-		ERR_FAIL_COND_V(!sqvar->is_owned_by(this), false);
+		const Ref<SquirrelVariant> sqvar = Object::cast_to<SquirrelVariant>(object);
+		ERR_FAIL_COND_V(sqvar.is_null(), SquirrelThrow::make(vformat("Cannot push object of type %s to the Squirrel stack. Use wrap_variant to pass an opaque object to Squirrel.", object->get_class())));
+		ERR_FAIL_COND_V(!sqvar->is_owned_by(this), SquirrelThrow::make("Cannot push an object from a different VM to the stack!"));
 
 		DEV_ASSERT(!sq_isnull(sqvar->_internal->obj));
 
 		sq_pushobject(vm, sqvar->_internal->obj);
-		return true;
+		return nullptr;
 	}
 	default:
 		break;
 	}
 
-	ERR_FAIL_V_MSG(false, vformat("Cannot push value %s of type %s to the Squirrel stack.", p_value, p_value.get_type_name(p_value.get_type())));
+	ERR_FAIL_V(SquirrelThrow::make(vformat("Cannot push value %s of type %s to the Squirrel stack.", p_value, Variant::get_type_name(p_value.get_type()))));
 }
 
 void SquirrelVMBase::push_stack_native(HSQUIRRELVM p_vm, const Ref<SquirrelVariant> &p_value) {
-	DEV_ASSERT(p_vm);
-	DEV_ASSERT(p_value.is_valid());
+	ERR_FAIL_NULL(p_vm);
+	ERR_FAIL_COND(p_value.is_null());
 	DEV_ASSERT(p_value->is_owned_by(from_native_vm(p_vm)));
 
 	sq_pushobject(p_vm, p_value->_internal->obj);
@@ -735,13 +741,32 @@ bool SquirrelVMBase::is_suspended() const {
 }
 
 Variant SquirrelVMBase::wake_up(const Variant &p_value) {
-	ERR_FAIL_COND_V(!is_suspended(), Variant());
-	GET_VM(Variant());
+	const Variant ret = wake_up_catch(p_value);
 
-	ERR_FAIL_COND_V(!push_stack(p_value), Variant());
+	const Ref<SquirrelThrow> error = ret;
+	ERR_FAIL_COND_V_MSG(error.is_valid(), Variant(), error->get_exception().stringify());
+
+	return ret;
+}
+
+Variant SquirrelVMBase::wake_up_throw(const Variant &p_exception) {
+	const Variant ret = wake_up_throw_catch(p_exception);
+
+	const Ref<SquirrelThrow> error = ret;
+	ERR_FAIL_COND_V_MSG(error.is_valid(), Variant(), error->get_exception().stringify());
+
+	return ret;
+}
+
+Variant SquirrelVMBase::wake_up_catch(const Variant &p_value) {
+	GET_VM(SquirrelThrow::make("internal error: missing VM"));
+
+	const Ref<SquirrelThrow> push_stack_error = push_stack_or_error(p_value);
+	ERR_FAIL_COND_V(push_stack_error.is_valid(), push_stack_error);
+
 	if (unlikely(SQ_FAILED(sq_wakeupvm(vm, SQTrue, SQTrue, SQTrue, SQFalse)))) {
 		sq_poptop(vm);
-		ERR_FAIL_V(Variant());
+		return SquirrelThrow::make(get_last_error());
 	}
 
 	const Variant result = get_stack(-1);
@@ -754,15 +779,15 @@ Variant SquirrelVMBase::wake_up(const Variant &p_value) {
 	return result;
 }
 
-Variant SquirrelVMBase::wake_up_throw(const Variant &p_exception) {
-	ERR_FAIL_COND_V(!is_suspended(), Variant());
-	GET_VM(Variant());
+Variant SquirrelVMBase::wake_up_throw_catch(const Variant &p_exception) {
+	GET_VM(SquirrelThrow::make("internal error: missing VM"));
 
-	ERR_FAIL_COND_V(!push_stack(p_exception), Variant());
+	const Ref<SquirrelThrow> push_stack_error = push_stack_or_error(p_exception);
+	ERR_FAIL_COND_V(push_stack_error.is_valid(), push_stack_error);
+
 	sq_throwobject(vm);
 	if (unlikely(SQ_FAILED(sq_wakeupvm(vm, SQFalse, SQTrue, SQTrue, SQTrue)))) {
-		sq_poptop(vm);
-		ERR_FAIL_V(Variant());
+		return SquirrelThrow::make(get_last_error());
 	}
 
 	const Variant result = get_stack(-1);
@@ -2411,22 +2436,3 @@ Ref<SquirrelSuspend> SquirrelSuspend::make(const Variant &p_result) {
 	sus->set_result(p_result);
 	return sus;
 }
-
-// TODO:
-//
-// DEBUG
-// SQUIRREL_API const SQChar *sq_getfreevariable(HSQUIRRELVM v,SQInteger idx,SQUnsignedInteger nval);
-// SQUIRREL_API SQRESULT sq_setfreevariable(HSQUIRRELVM v,SQInteger idx,SQUnsignedInteger nval);
-// SQUIRREL_API SQRESULT sq_getclosureinfo(HSQUIRRELVM v,SQInteger idx,SQInteger *nparams,SQInteger *nfreevars);
-//
-// CLASS/INSTANCE
-// SQUIRREL_API SQRESULT sq_getbase(HSQUIRRELVM v,SQInteger idx);
-// SQUIRREL_API SQBool sq_instanceof(HSQUIRRELVM v);
-// SQUIRREL_API SQRESULT sq_newmember(HSQUIRRELVM v,SQInteger idx,SQBool bstatic);
-// SQUIRREL_API SQRESULT sq_rawnewmember(HSQUIRRELVM v,SQInteger idx,SQBool bstatic);
-// SQUIRREL_API SQRESULT sq_getmemberhandle(HSQUIRRELVM v,SQInteger idx,HSQMEMBERHANDLE *handle);
-// SQUIRREL_API SQRESULT sq_getbyhandle(HSQUIRRELVM v,SQInteger idx,const HSQMEMBERHANDLE *handle);
-// SQUIRREL_API SQRESULT sq_setbyhandle(HSQUIRRELVM v,SQInteger idx,const HSQMEMBERHANDLE *handle);
-// SQUIRREL_API SQRESULT sq_setattributes(HSQUIRRELVM v,SQInteger idx);
-// SQUIRREL_API SQRESULT sq_getattributes(HSQUIRRELVM v,SQInteger idx);
-// SQUIRREL_API SQRESULT sq_getclass(HSQUIRRELVM v,SQInteger idx);
