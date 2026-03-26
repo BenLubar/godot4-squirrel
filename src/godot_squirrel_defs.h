@@ -375,6 +375,17 @@ public:
 	bool is_variant() const;
 	godot::Variant get_variant() const;
 	static bool get_native_variant(godot::Variant &r_variant, HSQUIRRELVM p_vm, int64_t p_stack_index);
+	template<typename T>
+	static bool get_native_ref(godot::Ref<T> &r_ref, HSQUIRRELVM p_vm, int64_t p_stack_index) {
+		godot::Variant variant;
+		if (unlikely(!get_native_variant(variant, p_vm, p_stack_index))) {
+			r_ref.unref();
+			return false;
+		}
+
+		r_ref = variant;
+		return r_ref.is_valid() || variant == godot::Variant();
+	}
 };
 
 class SquirrelCallable : public SquirrelVariant {
