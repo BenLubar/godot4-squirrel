@@ -110,8 +110,10 @@ class SquirrelIterator;
 
 #ifdef _MSC_VER
 typedef __int64 SQInteger;
+typedef unsigned __int64 SQUnsignedInteger;
 #else
 typedef long long SQInteger;
+typedef unsigned long long SQUnsignedInteger;
 #endif
 typedef char SQChar;
 typedef struct SQVM *HSQUIRRELVM;
@@ -240,7 +242,7 @@ public:
 	godot::Ref<SquirrelUserData> wrap_variant(const godot::Variant &p_value);
 	godot::Ref<SquirrelUserData> intern_variant(const godot::Variant &p_value);
 	godot::Ref<SquirrelNativeFunction> wrap_callable(const godot::Callable &p_callable, bool p_varargs);
-	godot::Ref<SquirrelNativeFunction> create_raw_native_function(SQFUNCTION p_func);
+	godot::Ref<SquirrelNativeFunction> create_raw_native_function(SQFUNCTION p_func, SQUnsignedInteger p_num_free_vars = 0);
 	godot::Variant _convert_variant_helper(const godot::Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed);
 	godot::Variant convert_variant(const godot::Variant &p_value, bool p_wrap_unhandled_values);
 
@@ -384,7 +386,7 @@ public:
 		}
 
 		r_ref = variant;
-		return r_ref.is_valid() || variant == godot::Variant();
+		return r_ref.is_valid();
 	}
 };
 

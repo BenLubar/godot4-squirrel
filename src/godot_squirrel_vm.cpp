@@ -707,7 +707,11 @@ Ref<SquirrelThrow> SquirrelVMBase::push_stack_or_error(const Variant &p_value) {
 
 void SquirrelVMBase::push_stack_native(HSQUIRRELVM p_vm, const Ref<SquirrelVariant> &p_value) {
 	ERR_FAIL_NULL(p_vm);
-	ERR_FAIL_COND(p_value.is_null());
+	if (unlikely(p_value.is_null())) {
+		sq_pushnull(p_vm);
+		return;
+	}
+
 	DEV_ASSERT(p_value->is_owned_by(from_native_vm(p_vm)));
 
 	sq_pushobject(p_vm, p_value->_internal->obj);
@@ -1001,10 +1005,10 @@ Ref<SquirrelNativeFunction> SquirrelVMBase::wrap_callable(const Callable &p_call
 	return nf;
 }
 
-Ref<SquirrelNativeFunction> SquirrelVMBase::create_raw_native_function(SQFUNCTION p_func) {
+Ref<SquirrelNativeFunction> SquirrelVMBase::create_raw_native_function(SQFUNCTION p_func, SQUnsignedInteger p_num_free_vars) {
 	GET_VM(Ref<SquirrelNativeFunction>());
 
-	sq_newclosure(vm, p_func, 0);
+	sq_newclosure(vm, p_func, p_num_free_vars);
 
 	const Ref<SquirrelNativeFunction> nf = get_stack(-1);
 	DEV_ASSERT(nf.is_valid());
