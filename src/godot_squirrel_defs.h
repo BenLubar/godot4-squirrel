@@ -30,16 +30,16 @@ private:
 	int64_t _error_column = -1;
 
 public:
-	godot::String get_source() const;
+	[[nodiscard]] godot::String get_source() const;
 	void set_source(const godot::String &p_source);
 
-	godot::PackedByteArray get_bytecode() const;
+	[[nodiscard]] godot::PackedByteArray get_bytecode() const;
 	void set_bytecode(const godot::PackedByteArray &p_bytecode);
 
-	godot::String get_error_desc() const;
-	godot::String get_error_source() const;
-	int64_t get_error_line() const;
-	int64_t get_error_column() const;
+	[[nodiscard]] godot::String get_error_desc() const;
+	[[nodiscard]] godot::String get_error_source() const;
+	[[nodiscard]] int64_t get_error_line() const;
+	[[nodiscard]] int64_t get_error_column() const;
 
 	void set_error_desc(const godot::String &p_error_desc);
 	void set_error_source(const godot::String &p_error_source);
@@ -57,22 +57,22 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::String _get_importer_name() const override;
-	godot::String _get_visible_name() const override;
-	int32_t _get_preset_count() const override;
-	godot::String _get_preset_name(int32_t p_preset_index) const override;
-	godot::PackedStringArray _get_recognized_extensions() const override;
-	godot::TypedArray<godot::Dictionary> _get_import_options(const godot::String &p_path, int32_t p_preset_index) const override;
-	godot::String _get_save_extension() const override;
-	godot::String _get_resource_type() const override;
-	float _get_priority() const override;
-	int32_t _get_import_order() const override;
-	int32_t _get_format_version() const override;
-	bool _get_option_visibility(const godot::String &p_path, const godot::StringName &p_option_name, const godot::Dictionary &p_options) const override;
-	godot::Error _import(const godot::String &p_source_file, const godot::String &p_save_path, const godot::Dictionary &p_options, const godot::TypedArray<godot::String> &p_platform_variants, const godot::TypedArray<godot::String> &p_gen_files) const override;
-	bool _can_import_threaded() const override;
+	[[nodiscard]] godot::String _get_importer_name() const override;
+	[[nodiscard]] godot::String _get_visible_name() const override;
+	[[nodiscard]] int32_t _get_preset_count() const override;
+	[[nodiscard]] godot::String _get_preset_name(int32_t p_preset_index) const override;
+	[[nodiscard]] godot::PackedStringArray _get_recognized_extensions() const override;
+	[[nodiscard]] godot::TypedArray<godot::Dictionary> _get_import_options(const godot::String &p_path, int32_t p_preset_index) const override;
+	[[nodiscard]] godot::String _get_save_extension() const override;
+	[[nodiscard]] godot::String _get_resource_type() const override;
+	[[nodiscard]] float _get_priority() const override;
+	[[nodiscard]] int32_t _get_import_order() const override;
+	[[nodiscard]] int32_t _get_format_version() const override;
+	[[nodiscard]] bool _get_option_visibility(const godot::String &p_path, const godot::StringName &p_option_name, const godot::Dictionary &p_options) const override;
+	[[nodiscard]] godot::Error _import(const godot::String &p_source_file, const godot::String &p_save_path, const godot::Dictionary &p_options, const godot::TypedArray<godot::String> &p_platform_variants, const godot::TypedArray<godot::String> &p_gen_files) const override;
+	[[nodiscard]] bool _can_import_threaded() const override;
 
-	godot::String _to_string() const;
+	[[nodiscard]] godot::String _to_string() const;
 };
 
 class SquirrelEditorPlugin : public godot::EditorPlugin {
@@ -130,7 +130,7 @@ protected:
 		SquirrelVM *vm;
 	};
 	VMHolder *_vm = nullptr;
-	_FORCE_INLINE_ SquirrelVM *_get_vm() const { return likely(_vm) ? _vm->vm : nullptr; }
+	[[nodiscard]] _FORCE_INLINE_ SquirrelVM *_get_vm() const { return likely(_vm) ? _vm->vm : nullptr; }
 
 	struct SquirrelVariantInternal;
 	friend struct SquirrelVariantInternal;
@@ -141,14 +141,14 @@ protected:
 
 public:
 	SquirrelVariant();
-	~SquirrelVariant();
+	~SquirrelVariant() override;
 
-	bool is_owned_by(const godot::Ref<SquirrelVMBase> &p_vm_or_thread) const;
-	uint64_t get_squirrel_reference_count() const;
-	godot::Ref<SquirrelIterator> iterate() const;
-	godot::Ref<SquirrelWeakRef> weak_ref() const;
+	[[nodiscard]] bool is_owned_by(const godot::Ref<SquirrelVMBase> &p_vm_or_thread) const;
+	[[nodiscard]] uint64_t get_squirrel_reference_count() const;
+	[[nodiscard]] godot::Ref<SquirrelIterator> iterate() const;
+	[[nodiscard]] godot::Ref<SquirrelWeakRef> weak_ref() const;
 
-	godot::String _to_string() const;
+	[[nodiscard]] godot::String _to_string() const;
 };
 
 class SquirrelStackInfo : public godot::RefCounted {
@@ -168,12 +168,12 @@ private:
 	friend class SquirrelVMBase;
 
 public:
-	godot::String get_source() const;
-	godot::String get_function_name() const;
-	int64_t get_line_number() const;
-	godot::Ref<SquirrelAnyFunction> get_function() const;
-	godot::PackedStringArray get_local_variable_names() const;
-	godot::Array get_local_variable_values() const;
+	[[nodiscard]] godot::String get_source() const;
+	[[nodiscard]] godot::String get_function_name() const;
+	[[nodiscard]] int64_t get_line_number() const;
+	[[nodiscard]] godot::Ref<SquirrelAnyFunction> get_function() const;
+	[[nodiscard]] godot::PackedStringArray get_local_variable_names() const;
+	[[nodiscard]] godot::Array get_local_variable_values() const;
 };
 
 class SquirrelVMBase : public SquirrelVariant {
@@ -201,7 +201,7 @@ protected:
 	SquirrelVMBase() : SquirrelVMBase(false) {}
 	explicit SquirrelVMBase(bool create);
 public:
-	~SquirrelVMBase();
+	~SquirrelVMBase() override;
 
 	enum VMState {
 		IDLE = 0,
@@ -209,8 +209,8 @@ public:
 		SUSPENDED = 2,
 	};
 
-	godot::Ref<SquirrelFunction> import(const godot::Ref<SquirrelScript> &p_script, const godot::String &p_debug_file_name = godot::String());
-	godot::Ref<SquirrelFunction> import_script(const godot::String &p_script, const godot::String &p_debug_file_name = godot::String());
+	[[nodiscard]] godot::Ref<SquirrelFunction> import(const godot::Ref<SquirrelScript> &p_script, const godot::String &p_debug_file_name = godot::String());
+	[[nodiscard]] godot::Ref<SquirrelFunction> import_script(const godot::String &p_script, const godot::String &p_debug_file_name = godot::String());
 	void import_blob();
 	void import_math();
 	void import_string();
@@ -219,32 +219,32 @@ public:
 	godot::Variant apply_function_catch(const godot::Ref<SquirrelCallable> &p_func, const godot::Variant &p_this, const godot::Array &p_args);
 	godot::Variant resume_generator(const godot::Ref<SquirrelGenerator> &p_generator);
 
-	godot::Variant get_stack(int64_t p_index) const;
-	int64_t get_stack_top() const;
+	[[nodiscard]] godot::Variant get_stack(int64_t p_index) const;
+	[[nodiscard]] int64_t get_stack_top() const;
 	bool push_stack(const godot::Variant &p_value);
 	godot::Ref<SquirrelThrow> push_stack_or_error(const godot::Variant &p_value);
 	static void push_stack_native(HSQUIRRELVM p_vm, const godot::Ref<SquirrelVariant> &p_value);
 	void pop_stack(int64_t p_count = 1);
 	void remove_stack(int64_t p_index);
 
-	VMState get_state() const;
-	bool is_suspended() const;
+	[[nodiscard]] VMState get_state() const;
+	[[nodiscard]] bool is_suspended() const;
 	godot::Variant wake_up(const godot::Variant &p_value = godot::Variant());
 	godot::Variant wake_up_throw(const godot::Variant &p_exception);
 	godot::Variant wake_up_catch(const godot::Variant &p_value = godot::Variant());
 	godot::Variant wake_up_throw_catch(const godot::Variant &p_exception);
 
-	godot::Ref<SquirrelInstance> create_blob(const godot::PackedByteArray &p_data);
-	godot::Ref<SquirrelTable> create_table();
-	godot::Ref<SquirrelTable> create_table_with_initial_capacity(int64_t p_size);
-	godot::Ref<SquirrelArray> create_array(int64_t p_size);
-	godot::Ref<SquirrelThread> create_thread();
-	godot::Ref<SquirrelUserData> wrap_variant(const godot::Variant &p_value);
-	godot::Ref<SquirrelUserData> intern_variant(const godot::Variant &p_value);
-	godot::Ref<SquirrelNativeFunction> wrap_callable(const godot::Callable &p_callable, bool p_varargs);
-	godot::Ref<SquirrelNativeFunction> create_raw_native_function(SQFUNCTION p_func, SQUnsignedInteger p_num_free_vars = 0);
-	godot::Variant _convert_variant_helper(const godot::Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed);
-	godot::Variant convert_variant(const godot::Variant &p_value, bool p_wrap_unhandled_values);
+	[[nodiscard]] godot::Ref<SquirrelInstance> create_blob(const godot::PackedByteArray &p_data);
+	[[nodiscard]] godot::Ref<SquirrelTable> create_table();
+	[[nodiscard]] godot::Ref<SquirrelTable> create_table_with_initial_capacity(int64_t p_size);
+	[[nodiscard]] godot::Ref<SquirrelArray> create_array(int64_t p_size);
+	[[nodiscard]] godot::Ref<SquirrelThread> create_thread();
+	[[nodiscard]] godot::Ref<SquirrelUserData> wrap_variant(const godot::Variant &p_value);
+	[[nodiscard]] godot::Ref<SquirrelUserData> intern_variant(const godot::Variant &p_value);
+	[[nodiscard]] godot::Ref<SquirrelNativeFunction> wrap_callable(const godot::Callable &p_callable, bool p_varargs);
+	[[nodiscard]] godot::Ref<SquirrelNativeFunction> create_raw_native_function(SQFUNCTION p_func, SQUnsignedInteger p_num_free_vars = 0);
+	[[nodiscard]] godot::Variant _convert_variant_helper(const godot::Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed);
+	[[nodiscard]] godot::Variant convert_variant(const godot::Variant &p_value, bool p_wrap_unhandled_values);
 
 	int64_t collect_garbage();
 	godot::TypedArray<SquirrelVariant> resurrect_unreachable();
@@ -252,20 +252,20 @@ public:
 	void set_error_handler(const godot::Ref<SquirrelAnyFunction> &p_func);
 	void set_error_handler_default();
 	void set_handle_caught_errors(bool p_enable);
-	godot::Variant get_last_error() const;
+	[[nodiscard]] godot::Variant get_last_error() const;
 	void reset_last_error();
 
 	void set_root_table(const godot::Ref<SquirrelTable> &p_table);
-	godot::Ref<SquirrelTable> get_root_table() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_root_table() const;
 	void set_const_table(const godot::Ref<SquirrelTable> &p_table);
-	godot::Ref<SquirrelTable> get_const_table() const;
-	godot::Ref<SquirrelTable> get_registry_table() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_const_table() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_registry_table() const;
 
-	godot::Ref<SquirrelStackInfo> get_stack_info(int64_t p_level) const;
+	[[nodiscard]] godot::Ref<SquirrelStackInfo> get_stack_info(int64_t p_level) const;
 	void print_call_stack();
 
-	HSQUIRRELVM get_native_vm() const;
-	static godot::Ref<SquirrelVMBase> from_native_vm(HSQUIRRELVM p_vm);
+	[[nodiscard]] HSQUIRRELVM get_native_vm() const;
+	[[nodiscard]] static godot::Ref<SquirrelVMBase> from_native_vm(HSQUIRRELVM p_vm);
 };
 VARIANT_ENUM_CAST(SquirrelVMBase::VMState);
 
@@ -291,36 +291,36 @@ protected:
 
 public:
 	SquirrelVM();
-	~SquirrelVM();
+	~SquirrelVM() override;
 
 #ifndef SQUIRREL_NO_PRINT
 	void set_print_func(const godot::Callable &p_print_func);
-	godot::Callable get_print_func() const;
+	[[nodiscard]] godot::Callable get_print_func() const;
 	void set_error_func(const godot::Callable &p_error_func);
-	godot::Callable get_error_func() const;
+	[[nodiscard]] godot::Callable get_error_func() const;
 #endif
 
 #ifndef SQUIRREL_NO_DEBUG
 	void set_debug_enabled(bool p_debug_enabled);
-	bool is_debug_enabled() const;
+	[[nodiscard]] bool is_debug_enabled() const;
 #endif
 
 	void clear_interned_variants();
 
-	godot::Ref<SquirrelTable> get_table_default_delegate() const;
-	godot::Ref<SquirrelTable> get_array_default_delegate() const;
-	godot::Ref<SquirrelTable> get_string_default_delegate() const;
-	godot::Ref<SquirrelTable> get_number_default_delegate() const;
-	godot::Ref<SquirrelTable> get_generator_default_delegate() const;
-	godot::Ref<SquirrelTable> get_closure_default_delegate() const;
-	godot::Ref<SquirrelTable> get_thread_default_delegate() const;
-	godot::Ref<SquirrelTable> get_class_default_delegate() const;
-	godot::Ref<SquirrelTable> get_instance_default_delegate() const;
-	godot::Ref<SquirrelTable> get_weak_ref_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_table_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_array_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_string_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_number_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_generator_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_closure_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_thread_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_class_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_instance_default_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_weak_ref_default_delegate() const;
 
-	godot::String _to_string() const;
+	[[nodiscard]] godot::String _to_string() const;
 
-	godot::Ref<SquirrelVMBase> _from_native_vm(HSQUIRRELVM p_vm);
+	[[nodiscard]] godot::Ref<SquirrelVMBase> _from_native_vm(HSQUIRRELVM p_vm);
 };
 
 class SquirrelTable : public SquirrelVariant {
@@ -331,16 +331,16 @@ protected:
 
 public:
 	bool set_delegate(const godot::Ref<SquirrelTable> &p_delegate);
-	godot::Ref<SquirrelTable> get_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_delegate() const;
 
 	bool new_slot(const godot::Variant &p_key, const godot::Variant &p_value);
 	bool set_slot(const godot::Variant &p_key, const godot::Variant &p_value, bool p_raw = false);
-	bool has_slot(const godot::Variant &p_key, bool p_raw = false) const;
-	godot::Variant get_slot(const godot::Variant &p_key, bool p_raw = false) const;
+	[[nodiscard]] bool has_slot(const godot::Variant &p_key, bool p_raw = false) const;
+	[[nodiscard]] godot::Variant get_slot(const godot::Variant &p_key, bool p_raw = false) const;
 	void delete_slot(const godot::Variant &p_key, bool p_raw = false);
-	int64_t size() const;
+	[[nodiscard]] int64_t size() const;
 	void clear();
-	godot::Ref<SquirrelTable> duplicate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> duplicate() const;
 	bool wrap_callables(const godot::TypedDictionary<godot::String, godot::Callable> &p_callables, bool p_varargs);
 };
 
@@ -352,16 +352,16 @@ protected:
 
 public:
 	bool set_item(int64_t p_index, const godot::Variant &p_value);
-	godot::Variant get_item(int64_t p_index) const;
+	[[nodiscard]] godot::Variant get_item(int64_t p_index) const;
 	bool append(const godot::Variant &p_value);
 	bool insert(int64_t p_index, const godot::Variant &p_value);
 	bool remove(int64_t p_index);
 	godot::Variant pop_back();
 	bool resize(int64_t p_size);
-	int64_t size() const;
+	[[nodiscard]] int64_t size() const;
 	void reverse();
 	void clear();
-	godot::Ref<SquirrelArray> duplicate() const;
+	[[nodiscard]] godot::Ref<SquirrelArray> duplicate() const;
 };
 
 class SquirrelUserData : public SquirrelVariant {
@@ -372,10 +372,10 @@ protected:
 
 public:
 	bool set_delegate(const godot::Ref<SquirrelTable> &p_delegate);
-	godot::Ref<SquirrelTable> get_delegate() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_delegate() const;
 
-	bool is_variant() const;
-	godot::Variant get_variant() const;
+	[[nodiscard]] bool is_variant() const;
+	[[nodiscard]] godot::Variant get_variant() const;
 	static bool get_native_variant(godot::Variant &r_variant, HSQUIRRELVM p_vm, int64_t p_stack_index);
 	template<typename T>
 	static bool get_native_ref(godot::Ref<T> &r_ref, HSQUIRRELVM p_vm, int64_t p_stack_index) {
@@ -404,8 +404,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::String get_name() const;
-	godot::Ref<SquirrelAnyFunction> bind_env(const godot::Ref<SquirrelVariant> &p_env) const;
+	[[nodiscard]] godot::String get_name() const;
+	[[nodiscard]] godot::Ref<SquirrelAnyFunction> bind_env(const godot::Ref<SquirrelVariant> &p_env) const;
 };
 
 class SquirrelFunction : public SquirrelAnyFunction {
@@ -416,8 +416,8 @@ protected:
 
 public:
 	void set_root_table(const godot::Ref<SquirrelTable> &p_table);
-	godot::Ref<SquirrelTable> get_root_table() const;
-	godot::Array get_outer_values() const;
+	[[nodiscard]] godot::Ref<SquirrelTable> get_root_table() const;
+	[[nodiscard]] godot::Array get_outer_values() const;
 };
 
 class SquirrelNativeFunction : public SquirrelAnyFunction {
@@ -428,7 +428,7 @@ protected:
 
 public:
 	void set_name(const godot::String &p_name);
-	godot::String get_name() const;
+	[[nodiscard]] godot::String get_name() const;
 	bool set_params_check(int64_t p_min_args, int64_t p_max_args, const godot::String &p_type_mask);
 };
 
@@ -445,7 +445,7 @@ public:
 		SUSPENDED = 2,
 	};
 
-	GeneratorState get_state() const;
+	[[nodiscard]] GeneratorState get_state() const;
 };
 VARIANT_ENUM_CAST(SquirrelGenerator::GeneratorState);
 
@@ -470,7 +470,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::Ref<SquirrelInstance> duplicate() const;
+	[[nodiscard]] godot::Ref<SquirrelInstance> duplicate() const;
 };
 
 class SquirrelWeakRef : public SquirrelVariant {
@@ -480,8 +480,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	godot::Variant get_object() const;
-	bool is_valid() const;
+	[[nodiscard]] godot::Variant get_object() const;
+	[[nodiscard]] bool is_valid() const;
 };
 
 class SquirrelIterator : public godot::RefCounted {
@@ -501,10 +501,10 @@ public:
 	bool next();
 
 	void set_key(const godot::Variant &p_key);
-	godot::Variant get_key() const;
+	[[nodiscard]] godot::Variant get_key() const;
 
 	void set_value(const godot::Variant &p_value);
-	godot::Variant get_value() const;
+	[[nodiscard]] godot::Variant get_value() const;
 };
 
 class SquirrelSpecialReturn : public godot::RefCounted {
@@ -526,7 +526,7 @@ protected:
 
 public:
 	void set_exception(const godot::Variant &p_exception);
-	godot::Variant get_exception() const;
+	[[nodiscard]] godot::Variant get_exception() const;
 
 	static godot::Ref<SquirrelThrow> make(const godot::Variant &p_exception);
 };
@@ -542,10 +542,10 @@ protected:
 
 public:
 	void set_func(const godot::Ref<SquirrelFunction> &p_func);
-	godot::Ref<SquirrelFunction> get_func() const;
+	[[nodiscard]] godot::Ref<SquirrelFunction> get_func() const;
 
 	void set_args(const godot::Array &p_args);
-	godot::Array get_args() const;
+	[[nodiscard]] godot::Array get_args() const;
 
 	static godot::Ref<SquirrelTailCall> make(const godot::Ref<SquirrelFunction> &p_func, const godot::Array &p_args);
 };
@@ -560,7 +560,7 @@ protected:
 
 public:
 	void set_result(const godot::Variant &p_result);
-	godot::Variant get_result() const;
+	[[nodiscard]] godot::Variant get_result() const;
 
 	static godot::Ref<SquirrelSuspend> make(const godot::Variant &p_result);
 };
