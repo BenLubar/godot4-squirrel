@@ -147,13 +147,13 @@ struct SquirrelVMBase::SquirrelVMInternal {
 
 		switch (type) {
 			case 'c': // "call"
-				vm->emit_signal("debug_call", vm_or_thread, sourcename, int64_t(line), funcname);
+				vm->emit_signal("debug_call", vm_or_thread, String::utf8(sourcename), static_cast<int64_t>(line), String::utf8(funcname));
 				break;
 			case 'r': // "return"
-				vm->emit_signal("debug_return", vm_or_thread, sourcename, int64_t(line), funcname);
+				vm->emit_signal("debug_return", vm_or_thread, String::utf8(sourcename), static_cast<int64_t>(line), String::utf8(funcname));
 				break;
 			case 'l': // "line"
-				vm->emit_signal("debug_line", vm_or_thread, sourcename, int64_t(line), funcname);
+				vm->emit_signal("debug_line", vm_or_thread, String::utf8(sourcename), static_cast<int64_t>(line), String::utf8(funcname));
 				break;
 			default:
 #ifdef DEV_ENABLED
@@ -178,7 +178,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 		return buffer.get_string_from_utf8();
 	}
 
-	static void squirrel_print(HSQUIRRELVM v, const SQChar *format, ...) {
+	static void squirrel_print(HSQUIRRELVM v, const SQChar *format, ...) { // NOLINT(modernize-avoid-variadic-functions)
 		va_list args;
 		va_start(args, format);
 		String message = squirrel_vsprintf(format, args);
@@ -192,7 +192,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 		}
 	}
 
-	static void squirrel_error(HSQUIRRELVM v, const SQChar *format, ...) {
+	static void squirrel_error(HSQUIRRELVM v, const SQChar *format, ...) { // NOLINT(modernize-avoid-variadic-functions)
 		va_list args;
 		va_start(args, format);
 		String message = squirrel_vsprintf(format, args);
@@ -595,7 +595,7 @@ Variant SquirrelVMBase::get_stack(int64_t p_index) const {
 	GET_VM(nullptr);
 	GET_OUTER_VM();
 
-	HSQOBJECT obj{};
+	HSQOBJECT obj;
 	sq_resetobject(&obj);
 	ERR_FAIL_COND_V(SQ_FAILED(sq_getstackobj(vm, p_index, &obj)), nullptr);
 
@@ -2279,13 +2279,7 @@ bool SquirrelWeakRef::is_valid() const {
 		ERR_FAIL_V(false);
 	}
 
-	HSQOBJECT obj{};
-	if (unlikely(SQ_FAILED(sq_getstackobj(vm->_vm_internal->vm, -1, &obj)))) {
-		sq_pop(vm->_vm_internal->vm, 2);
-		ERR_FAIL_V(false);
-	}
-
-	const bool is_null = sq_isnull(obj);
+	const bool is_null = sq_gettype(vm->_vm_internal->vm, -1) == OT_NULL;
 	sq_pop(vm->_vm_internal->vm, 2);
 
 	return !is_null;

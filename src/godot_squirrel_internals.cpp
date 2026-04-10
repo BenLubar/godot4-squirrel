@@ -1,3 +1,5 @@
+#include "godot_squirrel_internals.h"
+
 // clang-format off
 #include "../squirrel/squirrel/sqpcheader.h"
 #include "../squirrel/squirrel/sqvm.h"
@@ -11,8 +13,6 @@
 #include "../squirrel/squirrel/sqfuncstate.h"
 #include "../squirrel/squirrel/sqclass.h"
 // clang-format on
-
-#include "godot_squirrel_internals.h"
 
 SQInteger godot_squirrel_get_generator_state(const HSQOBJECT *obj) {
 	if (!sq_isgenerator(*obj)) {
