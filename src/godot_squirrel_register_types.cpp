@@ -1,7 +1,7 @@
-#include <gdextension_interface.h>
-
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
+
+#include <gdextension_interface.h>
 
 #ifndef SQUIRREL_NO_IMPORTER
 #include <godot_cpp/classes/engine.hpp>

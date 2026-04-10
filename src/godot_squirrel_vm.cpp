@@ -6,55 +6,57 @@
 #include <godot_cpp/classes/random_number_generator.hpp>
 #endif
 
-#include <squirrel.h>
+#include "godot_squirrel_internals.h"
+
 #include <sqstdaux.h>
 #include <sqstdblob.h>
 #include <sqstdmath.h>
 #include <sqstdstring.h>
+#include <squirrel.h>
+
 #include <cstdarg>
 #include <cstdio>
-
-#include "godot_squirrel_internals.h"
 
 using namespace godot;
 
 namespace {
-	struct SquirrelVariantUserData {
-		static const SQUserPointer type_tag;
+struct SquirrelVariantUserData {
+	static const SQUserPointer type_tag;
 
-		Variant variant;
+	Variant variant;
 
-		static SQInteger release_hook(SQUserPointer pointer, [[maybe_unused]] SQInteger size) {
-			SquirrelVariantUserData *svud = reinterpret_cast<SquirrelVariantUserData *>(pointer);
-			svud->~SquirrelVariantUserData();
+	static SQInteger release_hook(SQUserPointer pointer, [[maybe_unused]] SQInteger size) {
+		SquirrelVariantUserData *svud = reinterpret_cast<SquirrelVariantUserData *>(pointer);
+		svud->~SquirrelVariantUserData();
 
-			return 0;
-		}
+		return 0;
+	}
 
-		// pushes a Variant to the top of the stack
-		static void create(HSQUIRRELVM vm, const Variant &variant) {
-			SQUserPointer pointer = sq_newuserdata(vm, sizeof(SquirrelVariantUserData));
-			SquirrelVariantUserData *svud = reinterpret_cast<SquirrelVariantUserData *>(pointer);
-			new (svud) SquirrelVariantUserData();
-			sq_setreleasehook(vm, -1, &release_hook);
-			sq_settypetag(vm, -1, type_tag);
+	// pushes a Variant to the top of the stack
+	static void create(HSQUIRRELVM vm, const Variant &variant) {
+		SQUserPointer pointer = sq_newuserdata(vm, sizeof(SquirrelVariantUserData));
+		SquirrelVariantUserData *svud = reinterpret_cast<SquirrelVariantUserData *>(pointer);
+		new (svud) SquirrelVariantUserData();
+		sq_setreleasehook(vm, -1, &release_hook);
+		sq_settypetag(vm, -1, type_tag);
 
-			svud->variant = variant;
-		}
+		svud->variant = variant;
+	}
 
-		// retrieves a Variant from the stack
-		static bool get(Variant &out, HSQUIRRELVM vm, SQInteger index) {
-			SQUserPointer pointer = nullptr, object_type_tag = nullptr;
-			ERR_FAIL_COND_V(SQ_FAILED(sq_getuserdata(vm, index, &pointer, &object_type_tag)), false);
-			ERR_FAIL_COND_V(object_type_tag != type_tag, false);
+	// retrieves a Variant from the stack
+	static bool get(Variant &out, HSQUIRRELVM vm, SQInteger index) {
+		SQUserPointer pointer = nullptr;
+		SQUserPointer object_type_tag = nullptr;
+		ERR_FAIL_COND_V(SQ_FAILED(sq_getuserdata(vm, index, &pointer, &object_type_tag)), false);
+		ERR_FAIL_COND_V(object_type_tag != type_tag, false);
 
-			const SquirrelVariantUserData *svud = reinterpret_cast<const SquirrelVariantUserData *>(pointer);
-			out = svud->variant;
-			return true;
-		}
-	};
-	const SQUserPointer SquirrelVariantUserData::type_tag = const_cast<SQUserPointer *>(&SquirrelVariantUserData::type_tag);
-}
+		const SquirrelVariantUserData *svud = reinterpret_cast<const SquirrelVariantUserData *>(pointer);
+		out = svud->variant;
+		return true;
+	}
+};
+const SQUserPointer SquirrelVariantUserData::type_tag = const_cast<SQUserPointer *>(&SquirrelVariantUserData::type_tag); // NOLINT(bugprone-multi-level-implicit-pointer-conversion)
+} //namespace
 
 struct SquirrelVariant::SquirrelVariantInternal {
 	HSQOBJECT obj;
@@ -89,12 +91,11 @@ struct SquirrelVMBase::SquirrelVMInternal {
 	HashMap<Variant, Ref<SquirrelWeakRef>, VariantHasher, VariantComparator> memoized_variants;
 	HashMap<ObjectID, Ref<SquirrelWeakRef>> memoized_objects;
 
-	template<typename T>
+	template <typename T>
 	Ref<T> make_ref_object(const HSQOBJECT &obj) {
 		DEV_ASSERT(!ref_objects.has(obj));
 
-		Ref<T> ref;
-		ref.instantiate();
+		Ref<T> ref{ memnew(T) };
 		ref->_internal->init(reinterpret_cast<SquirrelVM *>(sq_getsharedforeignptr(vm)), ref.ptr(), obj);
 
 		ref_objects[obj] = *ref;
@@ -141,26 +142,24 @@ struct SquirrelVMBase::SquirrelVMInternal {
 			obj._unVal.pThread = v;
 
 			const auto cached = vm->_vm_internal->ref_objects.find(obj);
-			vm_or_thread = cached == vm->_vm_internal->ref_objects.end() ?
-				vm->_vm_internal->make_ref_object<SquirrelThread>(obj) :
-				Ref<SquirrelThread>(cached->value);
+			vm_or_thread = cached == vm->_vm_internal->ref_objects.end() ? vm->_vm_internal->make_ref_object<SquirrelThread>(obj) : Ref<SquirrelThread>(cached->value);
 		}
 
 		switch (type) {
-		case 'c': // "call"
-			vm->emit_signal("debug_call", vm_or_thread, sourcename, int64_t(line), funcname);
-			break;
-		case 'r': // "return"
-			vm->emit_signal("debug_return", vm_or_thread, sourcename, int64_t(line), funcname);
-			break;
-		case 'l': // "line"
-			vm->emit_signal("debug_line", vm_or_thread, sourcename, int64_t(line), funcname);
-			break;
-		default:
+			case 'c': // "call"
+				vm->emit_signal("debug_call", vm_or_thread, sourcename, int64_t(line), funcname);
+				break;
+			case 'r': // "return"
+				vm->emit_signal("debug_return", vm_or_thread, sourcename, int64_t(line), funcname);
+				break;
+			case 'l': // "line"
+				vm->emit_signal("debug_line", vm_or_thread, sourcename, int64_t(line), funcname);
+				break;
+			default:
 #ifdef DEV_ENABLED
-			WARN_PRINT_ONCE(vformat("Unhandled Squirrel debug type %c", char(type)));
+				WARN_PRINT_ONCE(vformat("Unhandled Squirrel debug type %c", char(type)));
 #endif
-			break;
+				break;
 		}
 	}
 #endif
@@ -168,7 +167,7 @@ struct SquirrelVMBase::SquirrelVMInternal {
 	static String squirrel_vsprintf(const char *format, va_list args) {
 		va_list args_copy;
 		va_copy(args_copy, args);
-		size_t length = std::vsnprintf(0, 0, format, args_copy);
+		size_t length = std::vsnprintf(nullptr, 0, format, args_copy);
 		va_end(args_copy);
 
 		PackedByteArray buffer;
@@ -232,12 +231,24 @@ void SquirrelStackInfo::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "local_variable_values", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), StringName(), "get_local_variable_values");
 }
 
-String SquirrelStackInfo::get_source() const { return _source; }
-String SquirrelStackInfo::get_function_name() const { return _function_name; }
-int64_t SquirrelStackInfo::get_line_number() const { return _line_number; }
-Ref<SquirrelAnyFunction> SquirrelStackInfo::get_function() const { return _function; }
-PackedStringArray SquirrelStackInfo::get_local_variable_names() const { return _local_variable_names; }
-Array SquirrelStackInfo::get_local_variable_values() const { return _local_variable_values; }
+String SquirrelStackInfo::get_source() const {
+	return _source;
+}
+String SquirrelStackInfo::get_function_name() const {
+	return _function_name;
+}
+int64_t SquirrelStackInfo::get_line_number() const {
+	return _line_number;
+}
+Ref<SquirrelAnyFunction> SquirrelStackInfo::get_function() const {
+	return _function;
+}
+PackedStringArray SquirrelStackInfo::get_local_variable_names() const {
+	return _local_variable_names;
+}
+Array SquirrelStackInfo::get_local_variable_values() const {
+	return _local_variable_values;
+}
 
 void SquirrelVMBase::_bind_methods() {
 	BIND_ENUM_CONSTANT(IDLE);
@@ -265,9 +276,9 @@ void SquirrelVMBase::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_state"), &SquirrelVMBase::get_state);
 	ClassDB::bind_method(D_METHOD("is_suspended"), &SquirrelVMBase::is_suspended);
-	ClassDB::bind_method(D_METHOD("wake_up", "value"), &SquirrelVMBase::wake_up, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("wake_up", "value"), &SquirrelVMBase::wake_up, DEFVAL(nullptr));
 	ClassDB::bind_method(D_METHOD("wake_up_throw", "exception"), &SquirrelVMBase::wake_up_throw);
-	ClassDB::bind_method(D_METHOD("wake_up_catch", "value"), &SquirrelVMBase::wake_up_catch, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("wake_up_catch", "value"), &SquirrelVMBase::wake_up_catch, DEFVAL(nullptr));
 	ClassDB::bind_method(D_METHOD("wake_up_throw_catch", "exception"), &SquirrelVMBase::wake_up_throw_catch);
 
 	ClassDB::bind_method(D_METHOD("create_blob", "data"), &SquirrelVMBase::create_blob);
@@ -308,7 +319,7 @@ SquirrelVMBase::SquirrelVMBase(bool create) {
 	if (create) {
 		_vm_internal = memnew(SquirrelVMInternal);
 		_vm_internal->vm = sq_open(SQUIRREL_INITIAL_STACK_SIZE);
-		if (!_vm_internal->vm) {
+		if (_vm_internal->vm == nullptr) {
 			ERR_PRINT("Failed to create Squirrel VM: out of memory?");
 			memdelete(_vm_internal);
 			_vm_internal = nullptr;
@@ -336,7 +347,7 @@ SquirrelVMBase::SquirrelVMBase(bool create) {
 }
 
 SquirrelVMBase::~SquirrelVMBase() {
-	if (_vm_internal) {
+	if (_vm_internal != nullptr) {
 		_vm_internal->ref_objects.clear();
 		_vm_internal->memoized_variants.clear();
 		_vm_internal->memoized_objects.clear();
@@ -346,7 +357,9 @@ SquirrelVMBase::~SquirrelVMBase() {
 }
 
 #define GET_VM(...) \
-	if (unlikely(!_vm_internal && sq_isnull(_internal->obj))) { return __VA_ARGS__; } \
+	if (unlikely(!_vm_internal && sq_isnull(_internal->obj))) { \
+		return __VA_ARGS__; \
+	} \
 	DEV_ASSERT(_vm_internal || sq_isthread(_internal->obj)); \
 	HSQUIRRELVM vm = likely(_vm_internal) ? _vm_internal->vm : _internal->obj._unVal.pThread; \
 	ERR_FAIL_NULL_V(vm, __VA_ARGS__)
@@ -358,23 +371,23 @@ SquirrelVMBase::~SquirrelVMBase() {
 	DEV_ASSERT(outer_vm->_vm_internal)
 
 namespace {
-	struct SquirrelByteCodeReader {
-		PackedByteArray bytes;
-		SQInteger offset = 0;
+struct SquirrelByteCodeReader {
+	PackedByteArray bytes;
+	SQInteger offset = 0;
 
-		static SQInteger read(SQUserPointer p_reader, SQUserPointer p_data, SQInteger p_count) {
-			SquirrelByteCodeReader *reader = reinterpret_cast<SquirrelByteCodeReader *>(p_reader);
+	static SQInteger read(SQUserPointer p_reader, SQUserPointer p_data, SQInteger p_count) {
+		SquirrelByteCodeReader *reader = reinterpret_cast<SquirrelByteCodeReader *>(p_reader);
 
-			const SQInteger count = MIN(reader->bytes.size() - reader->offset, p_count);
-			DEV_ASSERT(count >= 0);
+		const SQInteger count = MIN(reader->bytes.size() - reader->offset, p_count);
+		DEV_ASSERT(count >= 0);
 
-			memcpy(p_data, reader->bytes.ptr() + reader->offset, count);
-			reader->offset += count;
+		memcpy(p_data, reader->bytes.ptr() + reader->offset, count);
+		reader->offset += count;
 
-			return count;
-		}
-	};
-}
+		return count;
+	}
+};
+} //namespace
 
 Ref<SquirrelFunction> SquirrelVMBase::import(const Ref<SquirrelScript> &p_script, const String &p_debug_file_name) {
 	ERR_FAIL_COND_V(p_script.is_null(), Ref<SquirrelFunction>());
@@ -386,7 +399,7 @@ Ref<SquirrelFunction> SquirrelVMBase::import(const Ref<SquirrelScript> &p_script
 		const CharString source_bytes = p_script->get_source().utf8();
 		ERR_FAIL_COND_V_MSG(SQ_FAILED(sq_compilebuffer(vm, source_bytes, source_bytes.length(), file_name.utf8(), SQTrue)), Ref<SquirrelFunction>(), "Squirrel script parsing failed");
 	} else {
-		SquirrelByteCodeReader reader{p_script->get_bytecode()};
+		SquirrelByteCodeReader reader{ .bytes = p_script->get_bytecode() };
 		ERR_FAIL_COND_V_MSG(SQ_FAILED(sq_readclosure(vm, &SquirrelByteCodeReader::read, &reader)), Ref<SquirrelFunction>(), "Squirrel bytecode parsing failed");
 	}
 
@@ -402,8 +415,7 @@ Ref<SquirrelFunction> SquirrelVMBase::import(const Ref<SquirrelScript> &p_script
 }
 
 Ref<SquirrelFunction> SquirrelVMBase::import_script(const String &p_script, const String &p_debug_file_name) {
-	Ref<SquirrelScript> script;
-	script.instantiate();
+	Ref<SquirrelScript> script{ memnew(SquirrelScript) };
 	script->set_source(p_script);
 
 	return import(script, p_debug_file_name);
@@ -419,10 +431,8 @@ void SquirrelVMBase::import_blob() {
 
 #ifndef SQUIRREL_NO_RANDOMNUMBERGENERATOR
 static SQInteger squirrel_math_rand(HSQUIRRELVM vm) {
-	Variant rng_variant;
-	SquirrelVariantUserData::get(rng_variant, vm, -1);
-	const Ref<RandomNumberGenerator> rng = rng_variant;
-	CRASH_COND(rng.is_null());
+	Ref<RandomNumberGenerator> rng;
+	CRASH_COND(!SquirrelUserData::get_native_ref(rng, vm, -1));
 
 	sq_pushinteger(vm, rng->randi());
 
@@ -430,10 +440,8 @@ static SQInteger squirrel_math_rand(HSQUIRRELVM vm) {
 }
 
 static SQInteger squirrel_math_srand(HSQUIRRELVM vm) {
-	Variant rng_variant;
-	SquirrelVariantUserData::get(rng_variant, vm, -1);
-	const Ref<RandomNumberGenerator> rng = rng_variant;
-	CRASH_COND(rng.is_null());
+	Ref<RandomNumberGenerator> rng;
+	CRASH_COND(!SquirrelUserData::get_native_ref(rng, vm, -1));
 
 	SQInteger seed = 0;
 	if (unlikely(SQ_FAILED(sq_getinteger(vm, -2, &seed)))) {
@@ -453,12 +461,11 @@ void SquirrelVMBase::import_math() {
 	sqstd_register_mathlib(vm);
 
 #ifndef SQUIRREL_NO_RANDOMNUMBERGENERATOR
-	sq_pushstring(vm, "RAND_MAX", -1);
+	sq_pushstring(vm, "RAND_MAX", strlen("RAND_MAX"));
 	sq_pushinteger(vm, UINT32_MAX);
 	sq_newslot(vm, -3, SQFalse);
 
-	Ref<RandomNumberGenerator> rng;
-	rng.instantiate();
+	Ref<RandomNumberGenerator> rng{ memnew(RandomNumberGenerator) };
 #ifndef SQUIRREL_RANDOMNUMBERGENERATOR_RANDOMSEED
 	rng->set_seed(0);
 #endif
@@ -494,10 +501,10 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 	DEV_ASSERT(p_arg_count >= 2);
 
 	const Ref<SquirrelCallable> func = *p_args[0];
-	ERR_FAIL_COND_V(func.is_null(), Variant());
-	ERR_FAIL_COND_V(!func->is_owned_by(this), Variant());
+	ERR_FAIL_COND_V(func.is_null(), nullptr);
+	ERR_FAIL_COND_V(!func->is_owned_by(this), nullptr);
 
-	GET_VM(Variant());
+	GET_VM(nullptr);
 	GET_OUTER_VM();
 
 	sq_pushobject(vm, func->_internal->obj);
@@ -507,13 +514,13 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 			r_error.error = GDEXTENSION_CALL_ERROR_INVALID_ARGUMENT;
 			r_error.argument = arg;
 			r_error.expected = GDEXTENSION_VARIANT_TYPE_OBJECT;
-			ERR_FAIL_V(Variant());
+			ERR_FAIL_V(nullptr);
 		}
 	}
 
 	if (unlikely(SQ_FAILED(sq_call(vm, p_arg_count - 1, SQTrue, SQTrue)))) {
 		sq_poptop(vm);
-		ERR_FAIL_V(Variant());
+		ERR_FAIL_V(nullptr);
 	}
 
 	const Variant result = get_stack(-1);
@@ -527,10 +534,10 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 }
 
 Variant SquirrelVMBase::apply_function(const Ref<SquirrelCallable> &p_func, const Variant &p_this, const Array &p_args) {
-	const Variant ret = apply_function_catch(p_func, p_this, p_args);
+	Variant ret = apply_function_catch(p_func, p_this, p_args);
 
 	const Ref<SquirrelThrow> error = ret;
-	ERR_FAIL_COND_V_MSG(error.is_valid(), Variant(), error->get_exception().stringify());
+	ERR_FAIL_COND_V_MSG(error.is_valid(), nullptr, error->get_exception().stringify());
 
 	return ret;
 }
@@ -570,10 +577,10 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 }
 
 Variant SquirrelVMBase::resume_generator(const Ref<SquirrelGenerator> &p_generator) {
-	ERR_FAIL_COND_V(p_generator.is_null(), Variant());
-	ERR_FAIL_COND_V(!p_generator->is_owned_by(this), Variant());
+	ERR_FAIL_COND_V(p_generator.is_null(), nullptr);
+	ERR_FAIL_COND_V(!p_generator->is_owned_by(this), nullptr);
 
-	GET_VM(Variant());
+	GET_VM(nullptr);
 
 	sq_pushobject(vm, p_generator->_internal->obj);
 	sq_resume(vm, SQTrue, SQTrue);
@@ -585,12 +592,12 @@ Variant SquirrelVMBase::resume_generator(const Ref<SquirrelGenerator> &p_generat
 }
 
 Variant SquirrelVMBase::get_stack(int64_t p_index) const {
-	GET_VM(Variant());
+	GET_VM(nullptr);
 	GET_OUTER_VM();
 
 	HSQOBJECT obj{};
 	sq_resetobject(&obj);
-	ERR_FAIL_COND_V(SQ_FAILED(sq_getstackobj(vm, p_index, &obj)), Variant());
+	ERR_FAIL_COND_V(SQ_FAILED(sq_getstackobj(vm, p_index, &obj)), nullptr);
 
 	const auto ref = outer_vm->_vm_internal->ref_objects.find(obj);
 	if (ref != outer_vm->_vm_internal->ref_objects.end()) {
@@ -598,54 +605,53 @@ Variant SquirrelVMBase::get_stack(int64_t p_index) const {
 	}
 
 	switch (sq_type(obj)) {
-	case OT_NULL:
-		return Variant();
-	case OT_INTEGER:
-		return static_cast<int64_t>(sq_objtointeger(&obj));
-	case OT_FLOAT:
-		return static_cast<double>(sq_objtofloat(&obj));
-	case OT_BOOL:
-		return sq_objtobool(&obj) != SQFalse;
-	case OT_STRING:
-	{
-		const SQChar *string_chars = nullptr;
-		SQInteger string_size = 0;
-		ERR_FAIL_COND_V(SQ_FAILED(sq_getstringandsize(vm, p_index, &string_chars, &string_size)), String());
-		return String::utf8(string_chars, string_size);
-	}
-	case OT_TABLE:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelTable>(obj);
-	case OT_ARRAY:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelArray>(obj);
-	case OT_USERDATA:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelUserData>(obj);
-	case OT_CLOSURE:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelFunction>(obj);
-	case OT_NATIVECLOSURE:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelNativeFunction>(obj);
-	case OT_GENERATOR:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelGenerator>(obj);
-	case OT_USERPOINTER:
-		// while OT_USERPOINTER is technically valid here, we should never be
-		// in a situation where get_stack_obj is called while one is present.
-		CRASH_NOW_MSG("unexpected OT_USERPOINTER on stack");
-	case OT_THREAD:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelThread>(obj);
-	case OT_FUNCPROTO:
-		// Squirrel internal type; should not be on stack
-		CRASH_NOW_MSG("unexpected OT_FUNCPROTO on stack");
-	case OT_CLASS:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelClass>(obj);
-	case OT_INSTANCE:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelInstance>(obj);
-	case OT_WEAKREF:
-		return outer_vm->_vm_internal->make_ref_object<SquirrelWeakRef>(obj);
-	case OT_OUTER:
-		// Squirrel internal type; should not be on stack
-		CRASH_NOW_MSG("unexpected OT_OUTER on stack");
+		case OT_NULL:
+			return nullptr;
+		case OT_INTEGER:
+			return static_cast<int64_t>(sq_objtointeger(&obj));
+		case OT_FLOAT:
+			return static_cast<double>(sq_objtofloat(&obj));
+		case OT_BOOL:
+			return sq_objtobool(&obj) != SQFalse;
+		case OT_STRING: {
+			const SQChar *string_chars = nullptr;
+			SQInteger string_size = 0;
+			ERR_FAIL_COND_V(SQ_FAILED(sq_getstringandsize(vm, p_index, &string_chars, &string_size)), String());
+			return String::utf8(string_chars, string_size);
+		}
+		case OT_TABLE:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelTable>(obj);
+		case OT_ARRAY:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelArray>(obj);
+		case OT_USERDATA:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelUserData>(obj);
+		case OT_CLOSURE:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelFunction>(obj);
+		case OT_NATIVECLOSURE:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelNativeFunction>(obj);
+		case OT_GENERATOR:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelGenerator>(obj);
+		case OT_USERPOINTER:
+			// while OT_USERPOINTER is technically valid here, we should never be
+			// in a situation where get_stack_obj is called while one is present.
+			CRASH_NOW_MSG("unexpected OT_USERPOINTER on stack");
+		case OT_THREAD:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelThread>(obj);
+		case OT_FUNCPROTO:
+			// Squirrel internal type; should not be on stack
+			CRASH_NOW_MSG("unexpected OT_FUNCPROTO on stack");
+		case OT_CLASS:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelClass>(obj);
+		case OT_INSTANCE:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelInstance>(obj);
+		case OT_WEAKREF:
+			return outer_vm->_vm_internal->make_ref_object<SquirrelWeakRef>(obj);
+		case OT_OUTER:
+			// Squirrel internal type; should not be on stack
+			CRASH_NOW_MSG("unexpected OT_OUTER on stack");
 	}
 
-	ERR_FAIL_V_MSG(Variant(), vformat("Squirrel: unhandled type %08x for object on stack", sq_type(obj))); // should be unreachable
+	ERR_FAIL_V_MSG(nullptr, vformat("Squirrel: unhandled type %08x for object on stack", sq_type(obj))); // should be unreachable
 }
 
 int64_t SquirrelVMBase::get_stack_top() const {
@@ -662,44 +668,43 @@ Ref<SquirrelThrow> SquirrelVMBase::push_stack_or_error(const Variant &p_value) {
 	GET_VM(SquirrelThrow::make("internal error: missing VM"));
 
 	switch (p_value.get_type()) {
-	case Variant::NIL:
-		sq_pushnull(vm);
-		return nullptr;
-	case Variant::INT:
-		sq_pushinteger(vm, static_cast<SQInteger>(p_value.operator int64_t()));
-		return nullptr;
-	case Variant::FLOAT:
-		sq_pushfloat(vm, static_cast<SQFloat>(p_value.operator double()));
-		return nullptr;
-	case Variant::BOOL:
-		sq_pushbool(vm, p_value.operator bool() ? SQTrue : SQFalse);
-		return nullptr;
-	case Variant::STRING:
-	case Variant::STRING_NAME: // support automatically converting StringName to String for convenience
-	{
-		const CharString string_bytes = p_value.operator String().utf8();
-		sq_pushstring(vm, string_bytes, string_bytes.length());
-		return nullptr;
-	}
-	case Variant::OBJECT:
-	{
-		Object *const object = p_value;
-		if (!object) {
+		case Variant::NIL:
 			sq_pushnull(vm);
 			return nullptr;
+		case Variant::INT:
+			sq_pushinteger(vm, static_cast<SQInteger>(p_value.operator int64_t()));
+			return nullptr;
+		case Variant::FLOAT:
+			sq_pushfloat(vm, static_cast<SQFloat>(p_value.operator double()));
+			return nullptr;
+		case Variant::BOOL:
+			sq_pushbool(vm, p_value.operator bool() ? SQTrue : SQFalse);
+			return nullptr;
+		case Variant::STRING:
+		case Variant::STRING_NAME: {
+			// support automatically converting StringName to String for convenience
+			const CharString string_bytes = p_value.operator String().utf8();
+			sq_pushstring(vm, string_bytes, string_bytes.length());
+			return nullptr;
 		}
+		case Variant::OBJECT: {
+			Object *const object = p_value;
+			if (object == nullptr) {
+				sq_pushnull(vm);
+				return nullptr;
+			}
 
-		const Ref<SquirrelVariant> sqvar = Object::cast_to<SquirrelVariant>(object);
-		ERR_FAIL_COND_V(sqvar.is_null(), SquirrelThrow::make(vformat("Cannot push object of type %s to the Squirrel stack. Use wrap_variant to pass an opaque object to Squirrel.", object->get_class())));
-		ERR_FAIL_COND_V(!sqvar->is_owned_by(this), SquirrelThrow::make("Cannot push an object from a different VM to the stack!"));
+			const Ref<SquirrelVariant> sqvar = Object::cast_to<SquirrelVariant>(object);
+			ERR_FAIL_COND_V(sqvar.is_null(), SquirrelThrow::make(vformat("Cannot push object of type %s to the Squirrel stack. Use wrap_variant to pass an opaque object to Squirrel.", object->get_class())));
+			ERR_FAIL_COND_V(!sqvar->is_owned_by(this), SquirrelThrow::make("Cannot push an object from a different VM to the stack!"));
 
-		DEV_ASSERT(!sq_isnull(sqvar->_internal->obj));
+			DEV_ASSERT(!sq_isnull(sqvar->_internal->obj));
 
-		sq_pushobject(vm, sqvar->_internal->obj);
-		return nullptr;
-	}
-	default:
-		break;
+			sq_pushobject(vm, sqvar->_internal->obj);
+			return nullptr;
+		}
+		default:
+			break;
 	}
 
 	ERR_FAIL_V(SquirrelThrow::make(vformat("Cannot push value %s of type %s to the Squirrel stack.", p_value, Variant::get_type_name(p_value.get_type()))));
@@ -745,19 +750,19 @@ bool SquirrelVMBase::is_suspended() const {
 }
 
 Variant SquirrelVMBase::wake_up(const Variant &p_value) {
-	const Variant ret = wake_up_catch(p_value);
+	Variant ret = wake_up_catch(p_value);
 
 	const Ref<SquirrelThrow> error = ret;
-	ERR_FAIL_COND_V_MSG(error.is_valid(), Variant(), error->get_exception().stringify());
+	ERR_FAIL_COND_V_MSG(error.is_valid(), nullptr, error->get_exception().stringify());
 
 	return ret;
 }
 
 Variant SquirrelVMBase::wake_up_throw(const Variant &p_exception) {
-	const Variant ret = wake_up_throw_catch(p_exception);
+	Variant ret = wake_up_throw_catch(p_exception);
 
 	const Ref<SquirrelThrow> error = ret;
-	ERR_FAIL_COND_V_MSG(error.is_valid(), Variant(), error->get_exception().stringify());
+	ERR_FAIL_COND_V_MSG(error.is_valid(), nullptr, error->get_exception().stringify());
 
 	return ret;
 }
@@ -933,7 +938,7 @@ SQInteger SquirrelVMBase::SquirrelVMInternal::squirrel_callable_wrapper(HSQUIRRE
 	}
 
 	const Variant this_obj = args.pop_front();
-	if (varargs) {
+	if (varargs != SQFalse) {
 		args = Array::make(vm_base, this_obj, args);
 	}
 
@@ -1020,103 +1025,96 @@ Ref<SquirrelNativeFunction> SquirrelVMBase::create_raw_native_function(SQFUNCTIO
 
 Variant SquirrelVMBase::_convert_variant_helper(const Variant &p_value, bool p_wrap_unhandled_values, bool &r_failed) {
 	if (r_failed) {
-		return Variant();
+		return nullptr;
 	}
 
 	switch (p_value.get_type()) {
-	case Variant::NIL:
-	case Variant::BOOL:
-	case Variant::INT:
-	case Variant::FLOAT:
-	case Variant::STRING:
-	{
-		return p_value;
-	}
-	case Variant::STRING_NAME:
-	{
-		return p_value.operator String();
-	}
-	case Variant::VECTOR2:
-	case Variant::VECTOR2I:
-	case Variant::RECT2:
-	case Variant::RECT2I:
-	case Variant::VECTOR3:
-	case Variant::VECTOR3I:
-	case Variant::TRANSFORM2D:
-	case Variant::VECTOR4:
-	case Variant::VECTOR4I:
-	case Variant::PLANE:
-	case Variant::QUATERNION:
-	case Variant::AABB:
-	case Variant::BASIS:
-	case Variant::TRANSFORM3D:
-	case Variant::PROJECTION:
-	case Variant::COLOR:
-	case Variant::NODE_PATH:
-	case Variant::RID:
-	case Variant::SIGNAL:
-	case Variant::CALLABLE: // treat Callable as an opaque type to avoid giving Squirrel access to functions that might not understand Squirrel calls (and because we don't know which form of the calling convention it wants)
-	case Variant::PACKED_VECTOR2_ARRAY:
-	case Variant::PACKED_VECTOR3_ARRAY:
-	case Variant::PACKED_COLOR_ARRAY:
-	case Variant::PACKED_VECTOR4_ARRAY:
-	{
-		ERR_FAIL_COND_V_MSG(!p_wrap_unhandled_values, (r_failed = true, Variant()), vformat("Cannot convert %s %s to Squirrel value", Variant::get_type_name(p_value.get_type()), p_value));
-		return wrap_variant(p_value);
-	}
-	case Variant::OBJECT:
-	{
-		if (Ref<SquirrelVariant>(p_value).is_valid() && Ref<SquirrelVariant>(p_value)->is_owned_by(this)) {
+		case Variant::NIL:
+		case Variant::BOOL:
+		case Variant::INT:
+		case Variant::FLOAT:
+		case Variant::STRING: {
 			return p_value;
 		}
-		Object *obj = p_value;
-		ERR_FAIL_COND_V_MSG(!p_wrap_unhandled_values, (r_failed = true, Variant()), vformat("Cannot convert %s object %s to Squirrel value", obj ? obj->get_class() : "<null>", p_value));
-		return wrap_variant(p_value);
-	}
-	case Variant::DICTIONARY:
-	{
-		const Dictionary dict = p_value;
-		const Array keys = dict.keys();
-		const Ref<SquirrelTable> table = create_table_with_initial_capacity(keys.size());
-		for (int64_t i = 0; !r_failed && i < keys.size(); i++) {
-			table->new_slot(_convert_variant_helper(keys[i], p_wrap_unhandled_values, r_failed), _convert_variant_helper(dict[keys[i]], p_wrap_unhandled_values, r_failed));
+		case Variant::STRING_NAME: {
+			return p_value.operator String();
 		}
-		return r_failed ? Variant() : Variant(table);
-	}
-	case Variant::ARRAY:
-	{
-		const Array array = p_value;
-		const Ref<SquirrelArray> squirrel_array = create_array(array.size());
-		for (int64_t i = 0; !r_failed && i < array.size(); i++) {
-			squirrel_array->set_item(i, _convert_variant_helper(array[i], p_wrap_unhandled_values, r_failed));
+		case Variant::VECTOR2:
+		case Variant::VECTOR2I:
+		case Variant::RECT2:
+		case Variant::RECT2I:
+		case Variant::VECTOR3:
+		case Variant::VECTOR3I:
+		case Variant::TRANSFORM2D:
+		case Variant::VECTOR4:
+		case Variant::VECTOR4I:
+		case Variant::PLANE:
+		case Variant::QUATERNION:
+		case Variant::AABB:
+		case Variant::BASIS:
+		case Variant::TRANSFORM3D:
+		case Variant::PROJECTION:
+		case Variant::COLOR:
+		case Variant::NODE_PATH:
+		case Variant::RID:
+		case Variant::SIGNAL:
+		case Variant::CALLABLE: // treat Callable as an opaque type to avoid giving Squirrel access to functions that might not understand Squirrel calls (and because we don't know which form of the calling convention it wants)
+		case Variant::PACKED_VECTOR2_ARRAY:
+		case Variant::PACKED_VECTOR3_ARRAY:
+		case Variant::PACKED_COLOR_ARRAY:
+		case Variant::PACKED_VECTOR4_ARRAY: {
+			ERR_FAIL_COND_V_MSG(!p_wrap_unhandled_values, (r_failed = true, nullptr), vformat("Cannot convert %s %s to Squirrel value", Variant::get_type_name(p_value.get_type()), p_value));
+			return wrap_variant(p_value);
 		}
-		return r_failed ? Variant() : Variant(squirrel_array);
-	}
-	case Variant::PACKED_BYTE_ARRAY:
-	case Variant::PACKED_INT32_ARRAY:
-	case Variant::PACKED_INT64_ARRAY:
-	case Variant::PACKED_FLOAT32_ARRAY:
-	case Variant::PACKED_FLOAT64_ARRAY:
-	case Variant::PACKED_STRING_ARRAY:
-	{
-		const Array wrapped_array = p_value;
-		const Ref<SquirrelArray> packed_array = create_array(wrapped_array.size());
-		for (int64_t i = 0; i < wrapped_array.size(); i++) {
-			packed_array->set_item(i, wrapped_array[i]);
+		case Variant::OBJECT: {
+			if (Ref<SquirrelVariant>(p_value).is_valid() && Ref<SquirrelVariant>(p_value)->is_owned_by(this)) {
+				return p_value;
+			}
+			Object *obj = p_value;
+			ERR_FAIL_COND_V_MSG(!p_wrap_unhandled_values, (r_failed = true, nullptr), vformat("Cannot convert %s object %s to Squirrel value", obj ? obj->get_class() : "<null>", p_value));
+			return wrap_variant(p_value);
 		}
-		return packed_array;
-	}
-	case Variant::VARIANT_MAX:
-		break;
+		case Variant::DICTIONARY: {
+			const Dictionary dict = p_value;
+			const Array keys = dict.keys();
+			const Ref<SquirrelTable> table = create_table_with_initial_capacity(keys.size());
+			for (int64_t i = 0; !r_failed && i < keys.size(); i++) {
+				table->new_slot(_convert_variant_helper(keys[i], p_wrap_unhandled_values, r_failed), _convert_variant_helper(dict[keys[i]], p_wrap_unhandled_values, r_failed));
+			}
+			return r_failed ? nullptr : Variant(table);
+		}
+		case Variant::ARRAY: {
+			const Array array = p_value;
+			const Ref<SquirrelArray> squirrel_array = create_array(array.size());
+			for (int64_t i = 0; !r_failed && i < array.size(); i++) {
+				squirrel_array->set_item(i, _convert_variant_helper(array[i], p_wrap_unhandled_values, r_failed));
+			}
+			return r_failed ? nullptr : Variant(squirrel_array);
+		}
+		case Variant::PACKED_BYTE_ARRAY:
+		case Variant::PACKED_INT32_ARRAY:
+		case Variant::PACKED_INT64_ARRAY:
+		case Variant::PACKED_FLOAT32_ARRAY:
+		case Variant::PACKED_FLOAT64_ARRAY:
+		case Variant::PACKED_STRING_ARRAY: {
+			const Array wrapped_array = p_value;
+			const Ref<SquirrelArray> packed_array = create_array(wrapped_array.size());
+			for (int64_t i = 0; i < wrapped_array.size(); i++) {
+				packed_array->set_item(i, wrapped_array[i]);
+			}
+			return packed_array;
+		}
+		case Variant::VARIANT_MAX:
+			break;
 	}
 
-	ERR_FAIL_V_MSG((r_failed = true, Variant()), vformat("Unexpected Variant type %s", Variant::get_type_name(p_value.get_type())));
+	ERR_FAIL_V_MSG((r_failed = true, nullptr), vformat("Unexpected Variant type %s", Variant::get_type_name(p_value.get_type())));
 }
 
 Variant SquirrelVMBase::convert_variant(const Variant &p_value, bool p_wrap_unhandled_values) {
 	bool failed = false;
 	const Variant result = _convert_variant_helper(p_value, p_wrap_unhandled_values, failed);
-	return unlikely(failed) ? Variant() : result;
+	return unlikely(failed) ? nullptr : result;
 }
 
 int64_t SquirrelVMBase::collect_garbage() {
@@ -1132,12 +1130,12 @@ TypedArray<SquirrelVariant> SquirrelVMBase::resurrect_unreachable() {
 	GET_VM(TypedArray<SquirrelVariant>());
 
 	if (unlikely(SQ_FAILED(sq_resurrectunreachable(vm)))) {
-		return TypedArray<SquirrelVariant>();
+		return {};
 	}
 
 	if (sq_gettype(vm, -1) == OT_NULL) {
 		sq_poptop(vm);
-		return TypedArray<SquirrelVariant>();
+		return {};
 	}
 
 	DEV_ASSERT(sq_gettype(vm, -1) == OT_ARRAY);
@@ -1175,7 +1173,7 @@ void SquirrelVMBase::set_handle_caught_errors(bool p_enable) {
 }
 
 Variant SquirrelVMBase::get_last_error() const {
-	GET_VM(Variant());
+	GET_VM(nullptr);
 
 	sq_getlasterror(vm);
 	const Variant error = get_stack(-1);
@@ -1221,21 +1219,20 @@ GET_TABLE(registry);
 #undef GET_TABLE
 
 Ref<SquirrelStackInfo> SquirrelVMBase::get_stack_info(int64_t p_level) const {
-	GET_VM(Ref<SquirrelStackInfo>());
+	GET_VM({});
 
 	SQStackInfos si;
 	if (unlikely(SQ_FAILED(sq_stackinfos(vm, p_level, &si)))) {
-		return Ref<SquirrelStackInfo>();
+		return {};
 	}
 
-	Ref<SquirrelStackInfo> stack_info;
-	stack_info.instantiate();
+	Ref<SquirrelStackInfo> stack_info{ memnew(SquirrelStackInfo) };
 
-	if (si.source) {
-		stack_info->_source = si.source;
+	if (si.source != nullptr) {
+		stack_info->_source = String::utf8(si.source);
 	}
-	if (si.funcname) {
-		stack_info->_function_name = si.funcname;
+	if (si.funcname != nullptr) {
+		stack_info->_function_name = String::utf8(si.funcname);
 	}
 	stack_info->_line_number = si.line;
 
@@ -1245,7 +1242,7 @@ Ref<SquirrelStackInfo> SquirrelVMBase::get_stack_info(int64_t p_level) const {
 
 	int64_t i = 0;
 	while (const SQChar *name = sq_getlocal(vm, p_level, i)) {
-		stack_info->_local_variable_names.append(name);
+		stack_info->_local_variable_names.append(String::utf8(name));
 		stack_info->_local_variable_values.append(get_stack(-1));
 		sq_poptop(vm);
 		i++;
@@ -1494,8 +1491,7 @@ uint64_t SquirrelVariant::get_squirrel_reference_count() const {
 Ref<SquirrelIterator> SquirrelVariant::iterate() const {
 	ERR_FAIL_COND_V(sq_isnull(_internal->obj), Ref<SquirrelIterator>());
 
-	Ref<SquirrelIterator> iter;
-	iter.instantiate();
+	Ref<SquirrelIterator> iter{ memnew(SquirrelIterator) };
 	iter->_container = this;
 
 	return iter;
@@ -1640,9 +1636,7 @@ bool SquirrelTable::set_slot(const Variant &p_key, const Variant &p_value, bool 
 		return false;
 	}
 
-	const bool ok = p_raw ?
-		SQ_SUCCEEDED(sq_rawset(vm->_vm_internal->vm, -3)) :
-		SQ_SUCCEEDED(sq_set(vm->_vm_internal->vm, -3));
+	const bool ok = p_raw ? SQ_SUCCEEDED(sq_rawset(vm->_vm_internal->vm, -3)) : SQ_SUCCEEDED(sq_set(vm->_vm_internal->vm, -3));
 	sq_pop(vm->_vm_internal->vm, ok || p_raw ? 1 : 3);
 
 	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());
@@ -1663,9 +1657,7 @@ bool SquirrelTable::has_slot(const Variant &p_key, bool p_raw) const {
 		return false;
 	}
 
-	const bool ok = p_raw ?
-		SQ_SUCCEEDED(sq_rawget(vm->_vm_internal->vm, -2)) :
-		SQ_SUCCEEDED(sq_get(vm->_vm_internal->vm, -2));
+	const bool ok = p_raw ? SQ_SUCCEEDED(sq_rawget(vm->_vm_internal->vm, -2)) : SQ_SUCCEEDED(sq_get(vm->_vm_internal->vm, -2));
 
 	if (likely(ok)) {
 		sq_pop(vm->_vm_internal->vm, 2);
@@ -1680,20 +1672,18 @@ bool SquirrelTable::has_slot(const Variant &p_key, bool p_raw) const {
 
 Variant SquirrelTable::get_slot(const Variant &p_key, bool p_raw) const {
 	SquirrelVM *vm = _get_vm();
-	ERR_FAIL_NULL_V(vm, Variant());
+	ERR_FAIL_NULL_V(vm, nullptr);
 
-	ERR_FAIL_COND_V(!sq_istable(_internal->obj), Variant());
+	ERR_FAIL_COND_V(!sq_istable(_internal->obj), nullptr);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	if (unlikely(!vm->push_stack(p_key))) {
 		sq_poptop(vm->_vm_internal->vm);
 
-		return Variant();
+		return nullptr;
 	}
 
-	const bool ok = p_raw ?
-		SQ_SUCCEEDED(sq_rawget(vm->_vm_internal->vm, -2)) :
-		SQ_SUCCEEDED(sq_get(vm->_vm_internal->vm, -2));
+	const bool ok = p_raw ? SQ_SUCCEEDED(sq_rawget(vm->_vm_internal->vm, -2)) : SQ_SUCCEEDED(sq_get(vm->_vm_internal->vm, -2));
 
 	if (likely(ok)) {
 		const Variant value = vm->get_stack(-1);
@@ -1705,7 +1695,7 @@ Variant SquirrelTable::get_slot(const Variant &p_key, bool p_raw) const {
 
 	sq_poptop(vm->_vm_internal->vm);
 
-	ERR_FAIL_V(Variant());
+	ERR_FAIL_V(nullptr);
 }
 
 void SquirrelTable::delete_slot(const Variant &p_key, bool p_raw) {
@@ -1779,16 +1769,16 @@ bool SquirrelTable::wrap_callables(const TypedDictionary<String, Callable> &p_ca
 
 	// create functions before assigning any so we can be atomic
 	HashMap<String, Ref<SquirrelNativeFunction>> functions;
-	for (int64_t i = 0; i < keys.size(); i++) {
-		const Ref<SquirrelNativeFunction> func = vm->wrap_callable(p_callables[keys[i]], p_varargs);
+	for (const String &key : keys) {
+		const Ref<SquirrelNativeFunction> func = vm->wrap_callable(p_callables[key], p_varargs);
 		ERR_FAIL_COND_V(func.is_null(), false);
-		functions.insert(keys[i], func);
+		functions.insert(key, func);
 	}
 
 	bool ok = true;
-	for (int64_t i = 0; i < keys.size(); i++) {
+	for (const String &key : keys) {
 		// keep going even if it fails at this point
-		ok = new_slot(keys[i], functions.get(keys[i])) && ok;
+		ok = new_slot(key, functions.get(key)) && ok;
 	}
 
 	return ok;
@@ -1833,15 +1823,15 @@ bool SquirrelArray::set_item(int64_t p_index, const Variant &p_value) {
 
 Variant SquirrelArray::get_item(int64_t p_index) const {
 	SquirrelVM *vm = _get_vm();
-	ERR_FAIL_NULL_V(vm, Variant());
+	ERR_FAIL_NULL_V(vm, nullptr);
 
-	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), Variant());
+	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), nullptr);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	sq_pushinteger(vm->_vm_internal->vm, p_index);
 	if (unlikely(SQ_FAILED(sq_rawget(vm->_vm_internal->vm, -2)))) {
 		sq_poptop(vm->_vm_internal->vm);
-		ERR_FAIL_V(Variant());
+		ERR_FAIL_V(nullptr);
 	}
 
 	const Variant item = vm->get_stack(-1);
@@ -1907,9 +1897,9 @@ bool SquirrelArray::remove(int64_t p_index) {
 
 Variant SquirrelArray::pop_back() {
 	SquirrelVM *vm = _get_vm();
-	ERR_FAIL_NULL_V(vm, Variant());
+	ERR_FAIL_NULL_V(vm, nullptr);
 
-	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), Variant());
+	ERR_FAIL_COND_V(!sq_isarray(_internal->obj), nullptr);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	if (likely(SQ_SUCCEEDED(sq_arraypop(vm->_vm_internal->vm, -1, SQTrue)))) {
@@ -1920,7 +1910,7 @@ Variant SquirrelArray::pop_back() {
 	}
 
 	sq_poptop(vm->_vm_internal->vm);
-	ERR_FAIL_V(Variant());
+	ERR_FAIL_V(nullptr);
 }
 
 bool SquirrelArray::resize(int64_t p_size) {
@@ -2042,7 +2032,7 @@ bool SquirrelUserData::is_variant() const {
 
 Variant SquirrelUserData::get_variant() const {
 	SquirrelVM *vm = _get_vm();
-	ERR_FAIL_NULL_V(vm, Variant());
+	ERR_FAIL_NULL_V(vm, nullptr);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	Variant value;
@@ -2085,17 +2075,17 @@ String SquirrelAnyFunction::get_name() const {
 
 Ref<SquirrelAnyFunction> SquirrelAnyFunction::bind_env(const Ref<SquirrelVariant> &p_env) const {
 	SquirrelVM *vm = _get_vm();
-	ERR_FAIL_NULL_V(vm, Ref<SquirrelAnyFunction>());
+	ERR_FAIL_NULL_V(vm, nullptr);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	if (unlikely(!vm->push_stack(p_env))) {
 		sq_poptop(vm->_vm_internal->vm);
-		return Ref<SquirrelAnyFunction>(); // push_stack already wrote an error message
+		return nullptr; // push_stack already wrote an error message
 	}
 
 	if (unlikely(SQ_FAILED(sq_bindenv(vm->_vm_internal->vm, -2)))) {
 		sq_pop(vm->_vm_internal->vm, 2);
-		ERR_FAIL_V_MSG(Ref<SquirrelAnyFunction>(), vm->get_last_error().stringify());
+		ERR_FAIL_V_MSG(nullptr, vm->get_last_error().stringify());
 	}
 
 	const Ref<SquirrelAnyFunction> bound = vm->get_stack(-1);
@@ -2153,7 +2143,9 @@ Array SquirrelFunction::get_outer_values() const {
 	ERR_FAIL_NULL_V(vm, Array());
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
-	SQInteger nparamsmin = 0, nparamsmax = 0, nfreevars = 0;
+	SQInteger nparamsmin = 0;
+	SQInteger nparamsmax = 0;
+	SQInteger nfreevars = 0;
 	if (unlikely(SQ_FAILED(sq_getclosureinfo(vm->_vm_internal->vm, -1, &nparamsmin, &nparamsmax, &nfreevars)))) {
 		sq_poptop(vm->_vm_internal->vm);
 		ERR_FAIL_V_MSG(Array(), vm->get_last_error().stringify());
@@ -2259,14 +2251,14 @@ void SquirrelWeakRef::_bind_methods() {
 
 Variant SquirrelWeakRef::get_object() const {
 	SquirrelVM *vm = _get_vm();
-	ERR_FAIL_NULL_V(vm, Variant());
+	ERR_FAIL_NULL_V(vm, nullptr);
 
-	ERR_FAIL_COND_V(!sq_isweakref(_internal->obj), Variant());
+	ERR_FAIL_COND_V(!sq_isweakref(_internal->obj), nullptr);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
 	if (unlikely(SQ_FAILED(sq_getweakrefval(vm->_vm_internal->vm, -1)))) {
 		sq_poptop(vm->_vm_internal->vm);
-		ERR_FAIL_V(Variant());
+		ERR_FAIL_V(nullptr);
 	}
 
 	const Variant object = vm->get_stack(-1);
@@ -2331,8 +2323,8 @@ bool SquirrelIterator::next() {
 	}
 
 	_iterator = vm->get_stack(-1);
-	_key = Variant();
-	_value = Variant();
+	_key = nullptr;
+	_value = nullptr;
 
 	sq_pop(vm->_vm_internal->vm, 2);
 
@@ -2373,8 +2365,7 @@ Variant SquirrelThrow::get_exception() const {
 }
 
 Ref<SquirrelThrow> SquirrelThrow::make(const Variant &p_exception) {
-	Ref<SquirrelThrow> ex;
-	ex.instantiate();
+	Ref<SquirrelThrow> ex{ memnew(SquirrelThrow) };
 	ex->set_exception(p_exception);
 	return ex;
 }
@@ -2411,8 +2402,7 @@ Ref<SquirrelTailCall> SquirrelTailCall::make(const Ref<SquirrelFunction> &p_func
 	ERR_FAIL_COND_V(p_func.is_null(), Ref<SquirrelTailCall>());
 	ERR_FAIL_COND_V(p_args.is_empty(), Ref<SquirrelTailCall>());
 
-	Ref<SquirrelTailCall> tc;
-	tc.instantiate();
+	Ref<SquirrelTailCall> tc{ memnew(SquirrelTailCall) };
 	tc->set_func(p_func);
 	tc->set_args(p_args);
 	return tc;
@@ -2435,8 +2425,7 @@ Variant SquirrelSuspend::get_result() const {
 }
 
 Ref<SquirrelSuspend> SquirrelSuspend::make(const Variant &p_result) {
-	Ref<SquirrelSuspend> sus;
-	sus.instantiate();
+	Ref<SquirrelSuspend> sus{ memnew(SquirrelSuspend) };
 	sus->set_result(p_result);
 	return sus;
 }

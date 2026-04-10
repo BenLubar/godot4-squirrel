@@ -1,3 +1,4 @@
+// clang-format off
 #include "../squirrel/squirrel/sqpcheader.h"
 #include "../squirrel/squirrel/sqvm.h"
 #include "../squirrel/squirrel/sqstring.h"
@@ -9,6 +10,7 @@
 #include "../squirrel/squirrel/sqcompiler.h"
 #include "../squirrel/squirrel/sqfuncstate.h"
 #include "../squirrel/squirrel/sqclass.h"
+// clang-format on
 
 #include "godot_squirrel_internals.h"
 
@@ -18,13 +20,13 @@ SQInteger godot_squirrel_get_generator_state(const HSQOBJECT *obj) {
 	}
 
 	switch (obj->_unVal.pGenerator->_state) {
-	case SQGenerator::eRunning:
-		return SQ_VMSTATE_RUNNING;
-	case SQGenerator::eSuspended:
-		return SQ_VMSTATE_SUSPENDED;
-	case SQGenerator::eDead:
-	default:
-		return SQ_VMSTATE_IDLE;
+		case SQGenerator::eRunning:
+			return SQ_VMSTATE_RUNNING;
+		case SQGenerator::eSuspended:
+			return SQ_VMSTATE_SUSPENDED;
+		case SQGenerator::eDead:
+		default:
+			return SQ_VMSTATE_IDLE;
 	}
 }
 

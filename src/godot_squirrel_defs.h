@@ -1,8 +1,9 @@
 #pragma once
 
-#include <gdextension_interface.h>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/typed_dictionary.hpp>
+
+#include <gdextension_interface.h>
 #ifndef SQUIRREL_NO_IMPORTER
 #include <godot_cpp/classes/editor_import_plugin.hpp>
 #include <godot_cpp/classes/editor_plugin.hpp>
@@ -71,8 +72,6 @@ public:
 	[[nodiscard]] bool _get_option_visibility(const godot::String &p_path, const godot::StringName &p_option_name, const godot::Dictionary &p_options) const override;
 	[[nodiscard]] godot::Error _import(const godot::String &p_source_file, const godot::String &p_save_path, const godot::Dictionary &p_options, const godot::TypedArray<godot::String> &p_platform_variants, const godot::TypedArray<godot::String> &p_gen_files) const override;
 	[[nodiscard]] bool _can_import_threaded() const override;
-
-	[[nodiscard]] godot::String _to_string() const;
 };
 
 class SquirrelEditorPlugin : public godot::EditorPlugin {
@@ -200,6 +199,7 @@ protected:
 
 	SquirrelVMBase() : SquirrelVMBase(false) {}
 	explicit SquirrelVMBase(bool create);
+
 public:
 	~SquirrelVMBase() override;
 
@@ -377,7 +377,7 @@ public:
 	[[nodiscard]] bool is_variant() const;
 	[[nodiscard]] godot::Variant get_variant() const;
 	static bool get_native_variant(godot::Variant &r_variant, HSQUIRRELVM p_vm, int64_t p_stack_index);
-	template<typename T>
+	template <typename T>
 	static bool get_native_ref(godot::Ref<T> &r_ref, HSQUIRRELVM p_vm, int64_t p_stack_index) {
 		godot::Variant variant;
 		if (unlikely(!get_native_variant(variant, p_vm, p_stack_index))) {

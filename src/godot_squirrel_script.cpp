@@ -82,7 +82,7 @@ void SquirrelScript::set_error_column(int64_t p_error_column) {
 	_error_column = p_error_column;
 }
 
-static SQInteger _write_bytecode(SQUserPointer buffer, SQUserPointer data, SQInteger size) {
+static SQInteger write_bytecode(SQUserPointer buffer, SQUserPointer data, SQInteger size) {
 	DEV_ASSERT(size >= 0);
 
 	PackedByteArray &buf = *reinterpret_cast<PackedByteArray *>(buffer);
@@ -95,7 +95,7 @@ static SQInteger _write_bytecode(SQUserPointer buffer, SQUserPointer data, SQInt
 	return size;
 }
 
-static void _on_compile_error(HSQUIRRELVM vm, const SQChar *desc, const SQChar *source, SQInteger line, SQInteger column) {
+static void on_compile_error(HSQUIRRELVM vm, const SQChar *desc, const SQChar *source, SQInteger line, SQInteger column) {
 	SquirrelScript *script = reinterpret_cast<SquirrelScript *>(sq_getsharedforeignptr(vm));
 	script->set_error_desc(desc);
 	script->set_error_source(source);
@@ -105,7 +105,7 @@ static void _on_compile_error(HSQUIRRELVM vm, const SQChar *desc, const SQChar *
 
 Error SquirrelScript::compile(const String &p_debug_file_name) {
 	HSQUIRRELVM vm = sq_open(SQUIRREL_INITIAL_STACK_SIZE);
-	if (!vm) {
+	if (vm == nullptr) {
 		return ERR_OUT_OF_MEMORY;
 	}
 
@@ -118,7 +118,7 @@ Error SquirrelScript::compile(const String &p_debug_file_name) {
 	_error_source = String();
 	_error_line = -1;
 	_error_column = -1;
-	sq_setcompilererrorhandler(vm, &_on_compile_error);
+	sq_setcompilererrorhandler(vm, &on_compile_error);
 
 	const CharString source_bytes = _source.utf8();
 	PackedByteArray bytecode;
@@ -127,7 +127,7 @@ Error SquirrelScript::compile(const String &p_debug_file_name) {
 
 	bool succeeded = false;
 	if (SQ_SUCCEEDED(sq_compilebuffer(vm, source_bytes, source_bytes.length(), file_name.utf8(), SQTrue))) {
-		succeeded = SQ_SUCCEEDED(sq_writeclosure(vm, &_write_bytecode, &bytecode));
+		succeeded = SQ_SUCCEEDED(sq_writeclosure(vm, &write_bytecode, &bytecode));
 		sq_poptop(vm);
 	}
 
@@ -162,7 +162,7 @@ String SquirrelEditorImportPlugin::_get_preset_name(int32_t p_preset_index) cons
 	return "Unknown";
 }
 PackedStringArray SquirrelEditorImportPlugin::_get_recognized_extensions() const {
-	return PackedStringArray{{"nut"}};
+	return PackedStringArray{ "nut" };
 }
 TypedArray<Dictionary> SquirrelEditorImportPlugin::_get_import_options(const String &p_path, int32_t p_preset_index) const {
 	if (p_preset_index == 0) {
@@ -177,7 +177,7 @@ TypedArray<Dictionary> SquirrelEditorImportPlugin::_get_import_options(const Str
 		return Array::make(option_compile, option_clear_source);
 	}
 
-	return TypedArray<Dictionary>();
+	return {};
 }
 String SquirrelEditorImportPlugin::_get_save_extension() const {
 	return "res";
@@ -210,8 +210,7 @@ Error SquirrelEditorImportPlugin::_import(const String &p_source_file, const Str
 		}
 	}
 
-	Ref<SquirrelScript> script;
-	script.instantiate();
+	Ref<SquirrelScript> script{ memnew(SquirrelScript) };
 	script->set_name(p_source_file.get_file());
 	script->set_source(source_text);
 	if (p_options.get("compile", false)) {
@@ -227,10 +226,6 @@ Error SquirrelEditorImportPlugin::_import(const String &p_source_file, const Str
 }
 bool SquirrelEditorImportPlugin::_can_import_threaded() const {
 	return true;
-}
-
-String SquirrelEditorImportPlugin::_to_string() const {
-	return vformat("<%s:%d>", get_class(), get_instance_id());
 }
 
 void SquirrelEditorPlugin::_bind_methods() {
