@@ -1657,17 +1657,11 @@ bool SquirrelTable::has_slot(const Variant &p_key, bool p_raw) const {
 		return false;
 	}
 
-	const bool ok = p_raw ? SQ_SUCCEEDED(sq_rawget(vm->_vm_internal->vm, -2)) : SQ_SUCCEEDED(sq_get(vm->_vm_internal->vm, -2));
+	const bool ok = (p_raw ? sq_rawin(vm->_vm_internal->vm, -2) : sq_in(vm->_vm_internal->vm, -2)) != SQFalse;
 
-	if (likely(ok)) {
-		sq_pop(vm->_vm_internal->vm, 2);
+	sq_pop(vm->_vm_internal->vm, 2);
 
-		return true;
-	}
-
-	sq_poptop(vm->_vm_internal->vm);
-
-	return false;
+	return ok;
 }
 
 Variant SquirrelTable::get_slot(const Variant &p_key, bool p_raw) const {
