@@ -549,6 +549,12 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 	GET_VM(SquirrelThrow::make("internal error: missing VM"));
 	GET_OUTER_VM();
 
+	ERR_FAIL_COND_V(sq_getvmstate(vm) == SQ_VMSTATE_SUSPENDED, SquirrelThrow::make("cannot start a function on a suspended VM (use wake_up)"));
+
+#ifdef DEBUG_ENABLED
+	const SQInteger top_before = sq_gettop(vm);
+#endif
+
 	sq_pushobject(vm, p_func->_internal->obj);
 	if (unlikely(!push_stack(p_this))) {
 		sq_poptop(vm);
@@ -563,6 +569,7 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 
 	if (unlikely(SQ_FAILED(sq_call(vm, p_args.size() + 1, SQTrue, SQTrue)))) {
 		sq_poptop(vm);
+		DEV_ASSERT(top_before == sq_gettop(vm));
 		return SquirrelThrow::make(get_last_error());
 	}
 
@@ -571,6 +578,7 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 
 	if (sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
 		sq_poptop(vm);
+		DEV_ASSERT(top_before == sq_gettop(vm));
 	}
 
 	return result;
