@@ -397,7 +397,7 @@ Ref<SquirrelFunction> SquirrelVMBase::import(const Ref<SquirrelScript> &p_script
 	if (unlikely(p_script->get_bytecode().is_empty())) {
 		const String file_name = p_debug_file_name.is_empty() ? p_script->get_name() : p_debug_file_name;
 		const CharString source_bytes = p_script->get_source().utf8();
-		ERR_FAIL_COND_V_MSG(SQ_FAILED(sq_compilebuffer(vm, source_bytes, source_bytes.length(), file_name.utf8(), SQTrue)), Ref<SquirrelFunction>(), "Squirrel script parsing failed");
+		ERR_FAIL_COND_V_MSG(SQ_FAILED(sq_compilebuffer(vm, source_bytes.get_data(), source_bytes.length(), file_name.utf8().get_data(), SQTrue)), Ref<SquirrelFunction>(), "Squirrel script parsing failed");
 	} else {
 		SquirrelByteCodeReader reader{ .bytes = p_script->get_bytecode() };
 		ERR_FAIL_COND_V_MSG(SQ_FAILED(sq_readclosure(vm, &SquirrelByteCodeReader::read, &reader)), Ref<SquirrelFunction>(), "Squirrel bytecode parsing failed");
@@ -692,7 +692,7 @@ Ref<SquirrelThrow> SquirrelVMBase::push_stack_or_error(const Variant &p_value) {
 		case Variant::STRING_NAME: {
 			// support automatically converting StringName to String for convenience
 			const CharString string_bytes = p_value.operator String().utf8();
-			sq_pushstring(vm, string_bytes, string_bytes.length());
+			sq_pushstring(vm, string_bytes.get_data(), string_bytes.length());
 			return nullptr;
 		}
 		case Variant::OBJECT: {
@@ -1008,7 +1008,7 @@ Ref<SquirrelNativeFunction> SquirrelVMBase::wrap_callable(const Callable &p_call
 	SquirrelVariantUserData::create(vm, p_callable);
 	sq_pushbool(vm, p_varargs ? SQTrue : SQFalse);
 	sq_newclosure(vm, &SquirrelVMInternal::squirrel_callable_wrapper, 2);
-	sq_setnativeclosurename(vm, -1, String(p_callable.get_method()).utf8());
+	sq_setnativeclosurename(vm, -1, String(p_callable.get_method()).utf8().get_data());
 
 	const Ref<SquirrelNativeFunction> nf = get_stack(-1);
 	DEV_ASSERT(nf.is_valid());
@@ -2181,7 +2181,7 @@ void SquirrelNativeFunction::set_name(const String &p_name) {
 	ERR_FAIL_NULL(vm);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
-	sq_setnativeclosurename(vm->_vm_internal->vm, -1, p_name.utf8());
+	sq_setnativeclosurename(vm->_vm_internal->vm, -1, p_name.utf8().get_data());
 	sq_poptop(vm->_vm_internal->vm);
 }
 
@@ -2196,7 +2196,7 @@ bool SquirrelNativeFunction::set_params_check(int64_t p_min_args, int64_t p_max_
 	ERR_FAIL_COND_V(!sq_isnativeclosure(_internal->obj), false);
 
 	sq_pushobject(vm->_vm_internal->vm, _internal->obj);
-	bool ok = SQ_SUCCEEDED(sq_setparamscheck(vm->_vm_internal->vm, p_min_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_min_args, p_max_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_max_args, p_type_mask.utf8()));
+	bool ok = SQ_SUCCEEDED(sq_setparamscheck(vm->_vm_internal->vm, p_min_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_min_args, p_max_args == 0 ? SQ_MATCHTYPEMASKSTRING : p_max_args, p_type_mask.utf8().get_data()));
 	sq_poptop(vm->_vm_internal->vm);
 
 	ERR_FAIL_COND_V_MSG(!ok, false, vm->get_last_error().stringify());

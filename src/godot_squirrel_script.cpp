@@ -126,7 +126,7 @@ Error SquirrelScript::compile(const String &p_debug_file_name) {
 	const String file_name = p_debug_file_name.is_empty() ? get_name() : p_debug_file_name;
 
 	bool succeeded = false;
-	if (SQ_SUCCEEDED(sq_compilebuffer(vm, source_bytes, source_bytes.length(), file_name.utf8(), SQTrue))) {
+	if (SQ_SUCCEEDED(sq_compilebuffer(vm, source_bytes.get_data(), source_bytes.length(), file_name.utf8().get_data(), SQTrue))) {
 		succeeded = SQ_SUCCEEDED(sq_writeclosure(vm, &write_bytecode, &bytecode));
 		sq_poptop(vm);
 	}
