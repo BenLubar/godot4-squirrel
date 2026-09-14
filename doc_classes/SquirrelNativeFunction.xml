@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="SquirrelNativeFunction" inherits="SquirrelAnyFunction" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+<class name="SquirrelNativeFunction" inherits="SquirrelAnyFunction" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
 		A Squirrel function not defined in a script.
 	</brief_description>
@@ -46,7 +46,7 @@
 		</method>
 	</methods>
 	<members>
-		<member name="name" type="String" setter="set_name" getter="get_name">
+		<member name="native_function_name" type="String" setter="set_native_function_name" getter="get_native_function_name">
 			The function name. Defaults to the method name of the [Callable] used to create this [SquirrelNativeFunction].
 		</member>
 	</members>

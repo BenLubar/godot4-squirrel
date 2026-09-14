@@ -427,8 +427,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_name(const godot::String &p_name);
-	[[nodiscard]] godot::String get_name() const;
+	void set_native_function_name(const godot::String &p_name);
+	[[nodiscard]] godot::String get_native_function_name() const;
 	bool set_params_check(int64_t p_min_args, int64_t p_max_args, const godot::String &p_type_mask);
 };
 

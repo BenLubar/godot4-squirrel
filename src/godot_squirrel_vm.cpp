@@ -2169,14 +2169,14 @@ Array SquirrelFunction::get_outer_values() const {
 }
 
 void SquirrelNativeFunction::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_name", "name"), &SquirrelNativeFunction::set_name);
-	ClassDB::bind_method(D_METHOD("get_name"), &SquirrelNativeFunction::get_name);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_NONE), "set_name", "get_name");
+	ClassDB::bind_method(D_METHOD("set_native_function_name", "name"), &SquirrelNativeFunction::set_native_function_name);
+	ClassDB::bind_method(D_METHOD("get_native_function_name"), &SquirrelNativeFunction::get_native_function_name);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "native_function_name", PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_NONE), "set_native_function_name", "get_native_function_name");
 
 	ClassDB::bind_method(D_METHOD("set_params_check", "min_args", "max_args", "type_mask"), &SquirrelNativeFunction::set_params_check, DEFVAL(String()));
 }
 
-void SquirrelNativeFunction::set_name(const String &p_name) {
+void SquirrelNativeFunction::set_native_function_name(const String &p_name) {
 	SquirrelVM *vm = _get_vm();
 	ERR_FAIL_NULL(vm);
 
@@ -2185,8 +2185,8 @@ void SquirrelNativeFunction::set_name(const String &p_name) {
 	sq_poptop(vm->_vm_internal->vm);
 }
 
-String SquirrelNativeFunction::get_name() const {
-	return parent_type::get_name();
+String SquirrelNativeFunction::get_native_function_name() const {
+	return get_name();
 }
 
 bool SquirrelNativeFunction::set_params_check(int64_t p_min_args, int64_t p_max_args, const String &p_type_mask) {
