@@ -730,6 +730,42 @@ void SquirrelVMBase::push_stack_native(HSQUIRRELVM p_vm, const Ref<SquirrelVaria
 	sq_pushobject(p_vm, p_value->_internal->obj);
 }
 
+void SquirrelVMBase::push_stack_native_variant(HSQUIRRELVM p_vm, const Variant &p_value) {
+	ERR_FAIL_NULL(p_vm);
+
+	switch (p_value.get_type()) {
+		case Variant::NIL:
+			sq_pushnull(p_vm);
+			break;
+		case Variant::BOOL:
+			sq_pushbool(p_vm, p_value.operator bool());
+			break;
+		case Variant::INT:
+			sq_pushinteger(p_vm, p_value.operator int64_t());
+			break;
+		case Variant::FLOAT:
+			sq_pushfloat(p_vm, p_value.operator double());
+			break;
+		case Variant::STRING:
+		case Variant::STRING_NAME: {
+			const CharString string_bytes = p_value.operator String().utf8();
+			sq_pushstring(p_vm, string_bytes.get_data(), string_bytes.length());
+			break;
+		}
+		case Variant::OBJECT: {
+			Ref<SquirrelVariant> value{ p_value };
+			ERR_FAIL_COND_MSG(value.is_null(), vformat("invalid object type for SquirrelVMBase::push_stack_native_variant: %s", p_value.operator godot::Object *()->get_class()));
+
+			DEV_ASSERT(value->is_owned_by(from_native_vm(p_vm)));
+
+			sq_pushobject(p_vm, value->_internal->obj);
+			break;
+		}
+		default:
+			ERR_FAIL_MSG(vformat("invalid variant type for SquirrelVMBase::push_stack_native_variant: %s", Variant::get_type_name(p_value.get_type())));
+	}
+}
+
 void SquirrelVMBase::pop_stack(int64_t p_count) {
 	GET_VM();
 

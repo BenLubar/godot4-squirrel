@@ -224,6 +224,7 @@ public:
 	bool push_stack(const godot::Variant &p_value);
 	godot::Ref<SquirrelThrow> push_stack_or_error(const godot::Variant &p_value);
 	static void push_stack_native(HSQUIRRELVM p_vm, const godot::Ref<SquirrelVariant> &p_value);
+	static void push_stack_native_variant(HSQUIRRELVM p_vm, const godot::Variant &p_value);
 	void pop_stack(int64_t p_count = 1);
 	void remove_stack(int64_t p_index);
 
