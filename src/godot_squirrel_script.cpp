@@ -162,7 +162,7 @@ String SquirrelEditorImportPlugin::_get_preset_name(int32_t p_preset_index) cons
 	return "Unknown";
 }
 PackedStringArray SquirrelEditorImportPlugin::_get_recognized_extensions() const {
-	return PackedStringArray{ "nut" };
+	return { "nut" };
 }
 TypedArray<Dictionary> SquirrelEditorImportPlugin::_get_import_options(const String &p_path, int32_t p_preset_index) const {
 	if (p_preset_index == 0) {
@@ -174,16 +174,16 @@ TypedArray<Dictionary> SquirrelEditorImportPlugin::_get_import_options(const Str
 		option_clear_source["name"] = "clear_source";
 		option_clear_source["default_value"] = false;
 
-		return Array::make(option_compile, option_clear_source);
+		return { option_compile, option_clear_source };
 	}
 
 	return {};
 }
 String SquirrelEditorImportPlugin::_get_save_extension() const {
-	return "res";
+	return "nuc";
 }
 String SquirrelEditorImportPlugin::_get_resource_type() const {
-	return SquirrelScript::get_class_static();
+	return "SquirrelScript";
 }
 float SquirrelEditorImportPlugin::_get_priority() const {
 	return 1.0f;
