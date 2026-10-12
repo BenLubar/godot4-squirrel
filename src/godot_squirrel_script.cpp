@@ -180,7 +180,7 @@ TypedArray<Dictionary> SquirrelEditorImportPlugin::_get_import_options(const Str
 	return {};
 }
 String SquirrelEditorImportPlugin::_get_save_extension() const {
-	return "nuc";
+	return "res";
 }
 String SquirrelEditorImportPlugin::_get_resource_type() const {
 	return "SquirrelScript";
