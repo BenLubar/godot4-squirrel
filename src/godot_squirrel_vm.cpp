@@ -505,7 +505,6 @@ Variant SquirrelVMBase::call_function(const Variant **p_args, GDExtensionInt p_a
 	ERR_FAIL_COND_V(!func->is_owned_by(this), nullptr);
 
 	GET_VM(nullptr);
-	GET_OUTER_VM();
 
 	sq_pushobject(vm, func->_internal->obj);
 	for (int arg = 1; arg < p_arg_count; arg++) {
@@ -547,7 +546,6 @@ Variant SquirrelVMBase::apply_function_catch(const Ref<SquirrelCallable> &p_func
 	ERR_FAIL_COND_V(!p_func->is_owned_by(this), SquirrelThrow::make("func is not owned by this VM"));
 
 	GET_VM(SquirrelThrow::make("internal error: missing VM"));
-	GET_OUTER_VM();
 
 	ERR_FAIL_COND_V(sq_getvmstate(vm) == SQ_VMSTATE_SUSPENDED, SquirrelThrow::make("cannot start a function on a suspended VM (use wake_up)"));
 
@@ -738,7 +736,7 @@ void SquirrelVMBase::push_stack_native_variant(HSQUIRRELVM p_vm, const Variant &
 			sq_pushnull(p_vm);
 			break;
 		case Variant::BOOL:
-			sq_pushbool(p_vm, p_value.operator bool());
+			sq_pushbool(p_vm, p_value.operator bool() ? SQTrue : SQFalse);
 			break;
 		case Variant::INT:
 			sq_pushinteger(p_vm, p_value.operator int64_t());
