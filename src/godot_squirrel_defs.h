@@ -1,13 +1,15 @@
 #pragma once
-
 #include <godot_cpp/classes/resource.hpp>
-#include <godot_cpp/variant/typed_dictionary.hpp>
 
-#include <gdextension_interface.h>
 #ifndef SQUIRREL_NO_IMPORTER
 #include <godot_cpp/classes/editor_import_plugin.hpp>
 #include <godot_cpp/classes/editor_plugin.hpp>
 #endif
+
+#include <godot_cpp/variant/typed_dictionary.hpp>
+
+#include <gdextension_interface.h>
+#include <squirrel.h>
 
 #ifndef SQUIRREL_INITIAL_STACK_SIZE
 #define SQUIRREL_INITIAL_STACK_SIZE 128
@@ -106,17 +108,6 @@ class SquirrelClass;
 class SquirrelInstance;
 class SquirrelWeakRef;
 class SquirrelIterator;
-
-#ifdef _MSC_VER
-typedef __int64 SQInteger;
-typedef unsigned __int64 SQUnsignedInteger;
-#else
-typedef long long SQInteger;
-typedef unsigned long long SQUnsignedInteger;
-#endif
-typedef char SQChar;
-typedef struct SQVM *HSQUIRRELVM;
-typedef SQInteger (*SQFUNCTION)(HSQUIRRELVM);
 
 class SquirrelVariant : public godot::RefCounted {
 	GDCLASS(SquirrelVariant, godot::RefCounted);
